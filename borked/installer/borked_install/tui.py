@@ -213,7 +213,7 @@ class Installer:
                 self.filter = ""
                 self.step -= 1
                 continue
-            if key in (curses.KEY_UP, curses.KEY_DOWN, curses.KEY_PPAGE, curses.KEY_NPAGE):
+            if key in (curses.KEY_UP, curses.KEY_DOWN, curses.KEY_PPAGE, curses.KEY_NPAGE, 9, curses.KEY_BTAB):
                 self._move(key)
                 continue
             if key in (curses.KEY_BACKSPACE, 127, 8):
@@ -256,7 +256,7 @@ class Installer:
         x, _panel = self._origin()
         if self.error:
             _add(self.win, height - 3, x, self.error[:_panel], self.accent)
-        _add(self.win, height - 2, x, "enter  continue    esc  back    ↑↓  move", self.dim)
+        _add(self.win, height - 2, x, "enter  continue    tab  next    esc  back", self.dim)
 
     def _welcome(self) -> None:
         y = self._frame()
@@ -349,7 +349,7 @@ class Installer:
         return [zone for zone in self.zones if query in zone.lower()]
 
     def _move(self, key: int) -> None:
-        delta = -1 if key in (curses.KEY_UP, curses.KEY_PPAGE) else 1
+        delta = -1 if key in (curses.KEY_UP, curses.KEY_PPAGE, curses.KEY_BTAB) else 1
         if self.step == 1:
             self.key_i = (self.key_i + delta) % len(KEYBOARDS)
             _loadkeys(KEYBOARDS[self.key_i][0])
