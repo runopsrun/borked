@@ -18,7 +18,12 @@ def main() -> int:
     parser.add_argument("--config", help="JSON config. Otherwise look for a cidata volume.")
     args = parser.parse_args()
     cfg = load_config(args.config)
-    install(cfg)
+    if sys.stdin.isatty() and not cfg.poweroff:
+        from borked_install.tui import present_install
+
+        present_install(cfg)
+    else:
+        install(cfg)
     return 0
 
 

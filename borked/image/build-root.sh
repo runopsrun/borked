@@ -101,7 +101,7 @@ ln -sfn ../usr/lib/os-release "$sysroot/etc/os-release"
 cp /src/branding/issue "$sysroot/etc/issue"
 cp /src/branding/issue "$sysroot/usr/lib/issue"
 cp /src/packages/exclude.list "$sysroot/usr/share/borked/exclude.list"
-printf '%s\n' 'LANG=C.UTF-8' >"$sysroot/etc/locale.conf"
+printf '%s\n' 'LANG=en_US.UTF-8' >"$sysroot/etc/locale.conf"
 : >"$sysroot/etc/machine-id"
 rm -f "$sysroot/var/lib/dbus/machine-id"
 if [[ -f "$sysroot/etc/resolv.conf" && ! -L "$sysroot/etc/resolv.conf" ]]; then

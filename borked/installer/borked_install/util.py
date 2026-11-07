@@ -9,6 +9,19 @@ from collections.abc import Callable
 
 def run(cmd: list[str], **kwargs) -> subprocess.CompletedProcess:
     print("+", " ".join(cmd), flush=True)
+    # The TUI sets this so command output stays off the boot screen.
+    if os.environ.get("BORKED_QUIET") == "1" and "stdout" not in kwargs and "stderr" not in kwargs:
+        kwargs["stdout"] = subprocess.DEVNULL
+        kwargs["stderr"] = subprocess.PIPE
+        result = subprocess.run(cmd, check=False, **kwargs)
+        if result.returncode != 0:
+            err = result.stderr
+            if isinstance(err, bytes):
+                err = err.decode(errors="replace")
+            lines = [line for line in (err or "").splitlines() if line.strip()]
+            detail = lines[-1] if lines else f"{cmd[0]} failed ({result.returncode})"
+            raise SystemExit(detail)
+        return result
     return subprocess.run(cmd, check=True, **kwargs)
 
 

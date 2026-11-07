@@ -3,7 +3,6 @@
 set -euo pipefail
 
 export PATH=/usr/sbin:/usr/bin:/sbin:/bin
-echo "borked installer: live init"
 mkdir -p /proc /sys /dev /run /tmp /mnt /run/iso
 # util-linux mount follows this symlink and fails before proc exists.
 rm -f /etc/mtab
@@ -30,8 +29,25 @@ elif ((${#consoles[@]} == 1)); then
     exec >"${consoles[0]}" 2>&1
 fi
 
-printf '\033[2J\033[H'
-echo "Borked OS installer"
+splash() {
+    printf '\033[2J\033[H\033[?25l\n\n\n\n\n'
+    printf '                       Borked OS\n'
+    printf '                   Beautifully broken.\n\n'
+    printf '                 %s\n' "$1"
+}
+
+for font in \
+    /usr/lib/kbd/consolefonts/latarcyrheb-sun32.psfu.gz \
+    /usr/lib/kbd/consolefonts/LatArCyrHeb-32.psfu.gz \
+    /lib/kbd/consolefonts/latarcyrheb-sun32.psfu.gz
+do
+    if [[ -f "$font" ]]; then
+        setfont "$font" || true
+        break
+    fi
+done
+splash "Starting the installer"
+
 modprobe virtio_pci || true
 modprobe virtio_blk || true
 modprobe virtio_scsi || true
@@ -39,9 +55,9 @@ modprobe iso9660 || true
 modprobe btrfs || true
 
 if [[ -x /usr/lib/systemd/systemd-udevd ]]; then
-    /usr/lib/systemd/systemd-udevd --daemon
-    udevadm trigger --action=add || true
-    udevadm settle --timeout=15 || true
+    /usr/lib/systemd/systemd-udevd --daemon >/dev/null 2>&1 || true
+    udevadm trigger --action=add >/dev/null 2>&1 || true
+    udevadm settle --timeout=15 >/dev/null 2>&1 || true
 fi
 
 mounted=0
@@ -61,4 +77,22 @@ fi
 
 export BORKED_STREAM=/run/iso/borked-root.btrfs.zst
 export PYTHONPATH=/usr/share/borked/installer
-exec python3 -m borked_install
+export TERM=linux
+splash "Starting the installer"
+printf '\033[?25h'
+# This shell is PID 1. If it exits, the kernel panics even when the
+# installer returned success.
+set +e
+python3 -m borked_install
+status=$?
+set -e
+echo
+if [[ "$status" -eq 0 ]]; then
+    sync
+    reboot -f || true
+else
+    echo "Installer stopped (${status})."
+fi
+while true; do
+    sleep 3600
+done

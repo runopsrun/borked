@@ -49,13 +49,13 @@ cp "$vmlinuz" "$tree/vmlinuz"
 ) | (cd "$live" && cpio -o -H newc) | zstd -3 -T0 -o "$tree/initrd.img"
 ln -f /src/out/borked-root.btrfs.zst "$tree/borked-root.btrfs.zst"
 cat >"$tree/boot/grub/grub.cfg" <<'EOF'
-set timeout=1
+set timeout=0
 set default=0
 serial --unit=0 --speed=115200
 terminal_input console serial
 terminal_output console serial
 menuentry "Borked OS installer" {
-    linux /vmlinuz console=ttyS0,115200n8 console=tty0
+    linux /vmlinuz quiet loglevel=3 consoleblank=0 console=ttyS0,115200n8 console=tty0
     initrd /initrd.img
 }
 EOF

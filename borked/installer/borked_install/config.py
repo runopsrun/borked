@@ -23,6 +23,9 @@ class Config:
     stream: str
     poweroff: bool = False
     kernel_extra: str = ""
+    locale: str = "en_US.UTF-8"
+    keymap: str = "us"
+    xkb_layout: str = "us"
 
 
 def _mount_label(label: str, target: str) -> bool:
@@ -91,6 +94,9 @@ def _from_mapping(data: dict, stream: str | None) -> Config:
         stream=find_stream(data.get("stream") or stream),
         poweroff=bool(data.get("poweroff", False)),
         kernel_extra=str(data.get("kernel_extra") or ""),
+        locale=str(data.get("locale") or "en_US.UTF-8"),
+        keymap=str(data.get("keymap") or "us"),
+        xkb_layout=str(data.get("xkb_layout") or "us"),
     )
 
 

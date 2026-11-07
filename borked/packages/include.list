@@ -19,8 +19,20 @@ selinux-policy-targeted
 systemd-pam
 # The installer writes /etc/localtime from this.
 tzdata
+# cosmic-initial-setup drops C.UTF-8, so the language page is empty
+# without a real locale. English is the one the image ships.
+glibc-langpack-en
 # The created user is in wheel.
 sudo
+# cosmic-store lists Fedora apps through PackageKit. Weak deps are off,
+# so the desktop group does not pull this in, and the store stays on
+# Loading. appstream-data is the catalog. The portal service is what
+# flatpak and the file dialogs talk to; the COSMIC backend is already
+# in the desktop group.
+PackageKit
+appstream-data
+xdg-desktop-portal
+p11-kit-server
 @cosmic-desktop
 borked-release
 borked-repos

@@ -18,7 +18,8 @@ def _stream(path: str) -> subprocess.Popen:
     else:
         cmd = ["cat", path]
     print("+", " ".join(cmd), flush=True)
-    return subprocess.Popen(cmd, stdout=subprocess.PIPE)
+    err = subprocess.DEVNULL if os.environ.get("BORKED_QUIET") == "1" else None
+    return subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=err)
 
 
 def receive(root_dev: str, stream: str, cleanup: Cleanup) -> tuple[str, str]:
@@ -28,7 +29,10 @@ def receive(root_dev: str, stream: str, cleanup: Cleanup) -> tuple[str, str]:
     cleanup.add(lambda: umount(MNT))
     sender = _stream(stream)
     print("+ btrfs receive", MNT, flush=True)
-    received = subprocess.run(["btrfs", "receive", MNT], stdin=sender.stdout, check=False)
+    err = subprocess.DEVNULL if os.environ.get("BORKED_QUIET") == "1" else None
+    received = subprocess.run(
+        ["btrfs", "receive", MNT], stdin=sender.stdout, stderr=err, check=False
+    )
     if sender.stdout:
         sender.stdout.close()
     sender.wait()

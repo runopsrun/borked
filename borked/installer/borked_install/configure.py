@@ -11,6 +11,10 @@ from borked_install.partition import Layout
 from borked_install.util import run
 
 
+def _token(value: str) -> bool:
+    return bool(value) and all(ch.isalnum() or ch in "_.@-" for ch in value)
+
+
 def _write(path: str, text: str, mode: int = 0o644) -> None:
     Path(path).write_text(text)
     os.chmod(path, mode)
@@ -29,7 +33,11 @@ def configure(root: str, cfg: Config, layout: Layout, fs_uuid: str) -> None:
         "127.0.0.1 localhost\n::1 localhost\n"
         f"127.0.1.1 {cfg.hostname}\n",
     )
-    _write(os.path.join(root, "etc/locale.conf"), "LANG=C.UTF-8\n")
+    locale = cfg.locale if _token(cfg.locale) else "en_US.UTF-8"
+    keymap = cfg.keymap if _token(cfg.keymap) else "us"
+    xkb = cfg.xkb_layout if _token(cfg.xkb_layout) else "us"
+    _write(os.path.join(root, "etc/locale.conf"), f"LANG={locale}\n")
+    _write(os.path.join(root, "etc/vconsole.conf"), f"KEYMAP={keymap}\n")
     _write(
         os.path.join(root, "etc/sudoers.d/wheel"),
         "%wheel ALL=(ALL) ALL\n",
@@ -74,8 +82,36 @@ def configure(root: str, cfg: Config, layout: Layout, fs_uuid: str) -> None:
         input=f"{cfg.username}:{cfg.password}\n",
         text=True,
         check=True,
+        stderr=subprocess.DEVNULL if os.environ.get("BORKED_QUIET") == "1" else None,
     )
     run(["chroot", root, "passwd", "-l", "root"])
+    # cosmic-initial-setup lists locales and ignores C.UTF-8. With no
+    # language pack the page is empty and Next never enables. The
+    # installer already chose the locale, so mark that wizard finished.
+    config_dir = os.path.join(root, "home", cfg.username, ".config")
+    os.makedirs(config_dir, exist_ok=True)
+    Path(os.path.join(config_dir, "cosmic-initial-setup-done")).write_text("")
+    locale = cfg.locale if _token(cfg.locale) else "en_US.UTF-8"
+    xkb = cfg.xkb_layout if _token(cfg.xkb_layout) else "us"
+    comp = os.path.join(config_dir, "cosmic/com.system76.CosmicComp/v1")
+    settings = os.path.join(config_dir, "cosmic/com.system76.CosmicSettings/v1")
+    os.makedirs(comp, exist_ok=True)
+    os.makedirs(settings, exist_ok=True)
+    Path(os.path.join(comp, "xkb_config")).write_text(
+        f'(rules:"",model:"",layout:"{xkb}",variant:"",'
+        f"options:None,repeat_delay:600,repeat_rate:25)\n"
+    )
+    Path(os.path.join(settings, "system_locales")).write_text(f'["{locale}"]\n')
+    run(
+        [
+            "chroot",
+            root,
+            "chown",
+            "-R",
+            f"{cfg.username}:{cfg.username}",
+            f"/home/{cfg.username}/.config",
+        ]
+    )
     # systemd-run-generator redirects default.target from /run, but
     # set-default's /etc symlink wins, so systemd.run= never starts.
     # A conditioned unit still runs, and get-default stays graphical.

@@ -2,6 +2,7 @@
 bash
 coreutils
 util-linux
+kbd
 kmod
 systemd
 python3
