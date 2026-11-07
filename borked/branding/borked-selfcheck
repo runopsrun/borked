@@ -1,0 +1,103 @@
+#!/bin/bash
+# Installed as /usr/bin/borked-selfcheck by borked-release.
+# Qemu boots it with systemd.run=/usr/bin/borked-selfcheck.
+set -u
+
+RESULT=/run/borked-selfcheck-result
+: >"$RESULT" 2>/dev/null || true
+fail=0
+
+say() {
+    local line="borked-selfcheck: $*"
+    printf '%s\n' "$line"
+    printf '%s\n' "$line" >>"$RESULT" 2>/dev/null || true
+    if [[ -w /dev/kmsg ]]; then
+        printf '<6>%s\n' "$line" >/dev/kmsg 2>/dev/null || true
+    fi
+    if [[ -c /dev/ttyS0 ]]; then
+        printf '%s\n' "$line" >/dev/ttyS0 2>/dev/null || true
+    fi
+}
+
+if [[ -r /etc/os-release ]]; then
+    # shellcheck disable=SC1091
+    . /etc/os-release
+fi
+if [[ "${ID:-}" == "borked" ]]; then
+    say "ok id=borked"
+else
+    say "FAIL id=${ID:-missing}"
+    fail=1
+fi
+
+if [[ -f /etc/selinux/config ]] && grep -q '^SELINUX=enforcing$' /etc/selinux/config; then
+    say "ok selinux-config=enforcing"
+else
+    say "FAIL selinux-config"
+    fail=1
+fi
+
+if compgen -G /etc/selinux/targeted/policy/policy.* >/dev/null; then
+    say "ok selinux-policy-present"
+else
+    say "FAIL selinux-policy-missing"
+    fail=1
+fi
+
+enf="$(getenforce 2>/dev/null || echo unknown)"
+say "getenforce=${enf}"
+if [[ "$enf" == "Permissive" ]]; then
+    say "FAIL getenforce=Permissive"
+    fail=1
+fi
+
+if systemctl is-enabled cosmic-greeter.service >/dev/null 2>&1; then
+    say "ok greeter-enabled"
+else
+    say "FAIL greeter-not-enabled"
+    fail=1
+fi
+
+if systemctl is-enabled cosmic-greeter-daemon.service >/dev/null 2>&1; then
+    say "ok greeter-daemon-enabled"
+else
+    say "FAIL greeter-daemon-not-enabled"
+    fail=1
+fi
+
+def="$(systemctl get-default 2>/dev/null || true)"
+if [[ "$def" == "graphical.target" ]]; then
+    say "ok default-target=graphical.target"
+else
+    say "FAIL default-target=${def:-missing}"
+    fail=1
+fi
+
+list=/usr/share/borked/exclude.list
+if [[ ! -f "$list" ]]; then
+    say "FAIL exclude-list-missing"
+    fail=1
+else
+    while IFS= read -r name || [[ -n "$name" ]]; do
+        [[ -z "$name" || "$name" == \#* ]] && continue
+        # shellcheck disable=SC2086
+        hits="$(rpm -qa --qf '%{NAME}\n' $name 2>/dev/null || true)"
+        if [[ -n "$hits" ]]; then
+            say "FAIL present ${hits//$'\n'/,}"
+            fail=1
+        else
+            say "ok absent $name"
+        fi
+    done <"$list"
+fi
+
+if mountpoint -q /boot/efi 2>/dev/null; then
+    cp "$RESULT" /boot/efi/borked-selfcheck.txt 2>/dev/null || true
+fi
+
+if [[ "$fail" -eq 0 ]]; then
+    say PASS
+    exit 0
+fi
+say FAIL
+exit 1

@@ -1,0 +1,27 @@
+# Bootable skeleton. One package or @group per line.
+# Edit this file, then run `just lock`. Do not hand-edit packages/lock.
+@core
+kernel
+kernel-modules
+linux-firmware
+microcode_ctl
+# AMD microcode. Intel ships as microcode_ctl. Both stay in the image.
+amd-ucode-firmware
+grub2-efi-x64
+shim-x64
+efibootmgr
+btrfs-progs
+NetworkManager
+pipewire
+wireplumber
+selinux-policy-targeted
+# cosmic-greeter's PAM stack needs pam_systemd.so. Weak deps are off.
+systemd-pam
+# The installer writes /etc/localtime from this.
+tzdata
+# The created user is in wheel.
+sudo
+@cosmic-desktop
+borked-release
+borked-repos
+borked-defaults

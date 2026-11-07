@@ -1,0 +1,52 @@
+#!/bin/bash
+# PID 1 for the installer ISO. The initramfs is the whole live userspace.
+set -euo pipefail
+
+export PATH=/usr/sbin:/usr/bin:/sbin:/bin
+echo "borked installer: live init"
+mkdir -p /proc /sys /dev /run /tmp /mnt /run/iso
+# util-linux mount follows this symlink and fails before proc exists.
+rm -f /etc/mtab
+mount -n -t proc proc /proc
+mount -n -t sysfs sys /sys
+mount -n -t devtmpfs dev /dev
+# devtmpfs replaces /dev, so the pts directory has to be created after that.
+mkdir -p /dev/pts
+mount -n -t devpts devpts /dev/pts
+
+# /dev/fd is not created by devtmpfs, so process substitution is unavailable.
+if [[ -c /dev/ttyS0 ]]; then
+    exec >/dev/ttyS0 2>&1
+fi
+
+echo "borked installer: live init"
+modprobe virtio_pci || true
+modprobe virtio_blk || true
+modprobe virtio_scsi || true
+modprobe iso9660 || true
+modprobe btrfs || true
+
+if [[ -x /usr/lib/systemd/systemd-udevd ]]; then
+    /usr/lib/systemd/systemd-udevd --daemon
+    udevadm trigger --action=add || true
+    udevadm settle --timeout=15 || true
+fi
+
+mounted=0
+for _ in $(seq 1 30); do
+    dev="$(blkid -L BORKED_ISO || true)"
+    if [[ -n "$dev" ]]; then
+        mount -n -o ro "$dev" /run/iso && mounted=1 && break
+    fi
+    sleep 1
+done
+if [[ "$mounted" -ne 1 || ! -f /run/iso/borked-root.btrfs.zst ]]; then
+    echo "borked installer: ISO stream missing" >&2
+    sleep 20
+    poweroff -f || true
+    exit 1
+fi
+
+export BORKED_STREAM=/run/iso/borked-root.btrfs.zst
+export PYTHONPATH=/usr/share/borked/installer
+exec python3 -m borked_install

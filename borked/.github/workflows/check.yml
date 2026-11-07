@@ -1,0 +1,17 @@
+name: check
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  exclude:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install podman and just
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y podman just python3
+      - name: Negative exclude test
+        run: just check

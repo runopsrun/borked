@@ -1,0 +1,181 @@
+#!/usr/bin/env python3
+"""Solve packages/include.list against Fedora and the local Borked repo."""
+
+import fnmatch
+import hashlib
+import re
+import subprocess
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+
+ROOT = Path("/src")
+RELEASE = (ROOT / "release/fedora").read_text().strip()
+LINE = re.compile(
+    r"^\s+(\S+)\s+(x86_64|noarch|i686)\s+([0-9]+):(\S+)\s+\S+\s+"
+)
+
+
+def run(cmd: list[str], check: bool = True) -> subprocess.CompletedProcess[str]:
+    print("+", " ".join(cmd), flush=True)
+    return subprocess.run(cmd, check=check, text=True, capture_output=True)
+
+
+def read_names(path: Path) -> list[str]:
+    names = []
+    for raw in path.read_text().splitlines():
+        line = raw.split("#", 1)[0].strip()
+        if line:
+            names.append(line)
+    return names
+
+
+def sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    digest.update(path.read_bytes())
+    return digest.hexdigest()
+
+
+def dnf_prefix() -> list[str]:
+    return [
+        "dnf",
+        "--releasever",
+        RELEASE,
+        "--color=never",
+        "--setopt=install_weak_deps=False",
+        "--setopt=gpgcheck=1",
+        "--setopt=keepcache=1",
+        "--setopt=cachedir=/var/cache/libdnf5",
+        "--disable-repo=*openh264*",
+        "--disable-repo=*testing*",
+    ]
+
+
+def repo_metadata() -> list[str]:
+    lines = []
+    for repo_id, filename in (
+        ("fedora", "fedora.repo"),
+        ("updates", "fedora-updates.repo"),
+    ):
+        repo = Path("/etc/yum.repos.d") / filename
+        metalink = ""
+        if repo.exists():
+            for raw in repo.read_text().splitlines():
+                if raw.startswith("metalink="):
+                    metalink = raw.split("=", 1)[1].strip()
+        lines.append(f"# {repo_id}_metalink={metalink}")
+        matches = sorted(Path("/var/cache/libdnf5").glob(f"**/{repo_id}*/repodata/repomd.xml"))
+        if not matches:
+            matches = [
+                path
+                for path in Path("/var/cache/libdnf5").rglob("repomd.xml")
+                if repo_id in str(path)
+            ]
+        if matches:
+            lines.append(f"# {repo_id}_repomd_sha256={sha256(matches[-1])}")
+        else:
+            lines.append(f"# {repo_id}_repomd_sha256=")
+    borked = Path("/src/out/repo/repodata/repomd.xml")
+    lines.append(
+        "# borked_repomd_sha256=" + (sha256(borked) if borked.exists() else "")
+    )
+    return lines
+
+
+def pullers(name: str, solved: set[str]) -> list[str]:
+    proc = run(
+        [
+            "dnf",
+            "-q",
+            "repoquery",
+            "--latest-limit=1",
+            "--whatrequires",
+            name,
+            "--queryformat",
+            "%{name}",
+        ],
+        check=False,
+    )
+    found = []
+    for raw in (proc.stdout or "").splitlines():
+        dep = raw.strip()
+        if dep and dep in solved and dep != name:
+            found.append(dep)
+    return found
+
+
+def main() -> int:
+    includes = read_names(ROOT / "packages/include.list")
+    excludes = read_names(ROOT / "packages/exclude.list")
+    installroot = Path("/tmp/borked-solve")
+    installroot.mkdir(parents=True, exist_ok=True)
+    cmd = dnf_prefix() + [
+        "--installroot",
+        str(installroot),
+        "--use-host-config",
+        "--assumeno",
+        "install",
+    ]
+    for name in excludes:
+        cmd.append(f"--exclude={name}")
+    cmd.extend(includes)
+    proc = run(cmd, check=False)
+    output = (proc.stdout or "") + (proc.stderr or "")
+    print(output, flush=True)
+    aborted = re.search(r"abort", output, re.IGNORECASE)
+    problem = re.search(r"(?m)^(Problem|Error|No match for)", output)
+    if problem or "Transaction Summary" not in output or not aborted:
+        print("solve failed", file=sys.stderr)
+        return 1
+
+    nevra: list[str] = []
+    names: list[str] = []
+    for raw in output.splitlines():
+        match = LINE.match(raw)
+        if not match:
+            continue
+        name, arch, epoch, verrel = match.groups()
+        nevra.append(f"{name}-{epoch}:{verrel}.{arch}")
+        names.append(name)
+    if len(nevra) < 20:
+        print(f"solve parsed only {len(nevra)} packages", file=sys.stderr)
+        return 1
+
+    solved = set(names)
+    for pattern in excludes:
+        hits = sorted(name for name in solved if fnmatch.fnmatch(name, pattern))
+        if not hits:
+            continue
+        for hit in hits:
+            who = pullers(hit, solved)
+            via = ", ".join(who) if who else "direct transaction member"
+            print(f"exclude {pattern!r} pulled in {hit} via {via}", file=sys.stderr)
+        return 1
+
+    missing = [
+        name
+        for name in includes
+        if not name.startswith("@") and name not in solved
+    ]
+    if missing:
+        print("includes missing from the solve: " + ", ".join(missing), file=sys.stderr)
+        return 1
+
+    header = [
+        "# Generated by image/solve.py. Do not edit.",
+        f"# fedora_release={RELEASE}",
+        f"# variant={__import__('os').environ.get('BORKED_VARIANT', 'Development')}",
+        f"# generated={datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}",
+        f"# include_sha256={sha256(ROOT / 'packages/include.list')}",
+        f"# exclude_sha256={sha256(ROOT / 'packages/exclude.list')}",
+        f"# package_count={len(nevra)}",
+        *repo_metadata(),
+    ]
+    lock = ROOT / "packages/lock"
+    lock.write_text("\n".join(header + sorted(nevra)) + "\n")
+    print(f"wrote {lock} ({len(nevra)} packages)")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
