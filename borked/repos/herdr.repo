@@ -1,0 +1,10 @@
+[herdr]
+name=Herdr
+baseurl=https://download.copr.fedorainfracloud.org/results/rossetnocpes/herdr/fedora-$releasever-$basearch/
+type=rpm-md
+enabled=1
+gpgcheck=1
+repo_gpgcheck=0
+gpgkey=https://download.copr.fedorainfracloud.org/results/rossetnocpes/herdr/pubkey.gpg
+priority=110
+skip_if_unavailable=0

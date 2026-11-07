@@ -9,11 +9,9 @@ keydir=/src/out/keys
 gnupg="$keydir/gnupg"
 top=/src/out/rpmbuild
 
-dnf_build -y install rpm-build rpm-sign createrepo_c gnupg2 python3
+dnf_build -y install rpm-build rpm-sign createrepo_c gnupg2 python3 librsvg2-tools fontconfig
 
-if [[ ! -f /src/branding/wallpaper.png ]]; then
-    python3 /src/branding/gen_wallpaper.py
-fi
+python3 /src/branding/gen_wallpaper.py
 
 install -d -m 0700 "$gnupg"
 export GNUPGHOME="$gnupg"

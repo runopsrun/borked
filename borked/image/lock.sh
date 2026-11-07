@@ -6,6 +6,7 @@ source /src/image/lib.sh
 
 /src/image/build-rpms.sh
 write_borked_repo
+install_extra_repos
 dnf_build -y install python3
 python3 /src/image/solve.py
 borked_chown /src/out /src/packages/lock

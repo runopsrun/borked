@@ -37,3 +37,17 @@ p11-kit-server
 borked-release
 borked-repos
 borked-defaults
+# Daily apps. Lutris is here without Wine: wine-core's alternatives
+# scriptlet aborts the image install. Install Wine on the booted system.
+podman
+distrobox
+flameshot
+lutris
+# Steam is RPM Fusion's steam repo, not Fedora. This package holds the key.
+distribution-gpg-keys
+steam
+# Fedora does not ship these. repos/ is copied into the image.
+brave-origin
+zed
+herdr
+onlyoffice-desktopeditors

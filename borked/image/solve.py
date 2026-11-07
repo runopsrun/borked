@@ -36,6 +36,18 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def repos_sha256() -> str:
+    # Same command as the check in image/build-root.sh.
+    proc = subprocess.run(
+        "find /src/repos -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum",
+        shell=True,
+        check=True,
+        text=True,
+        capture_output=True,
+    )
+    return proc.stdout.split()[0]
+
+
 def dnf_prefix() -> list[str]:
     return [
         "dnf",
@@ -152,11 +164,15 @@ def main() -> int:
             print(f"exclude {pattern!r} pulled in {hit} via {via}", file=sys.stderr)
         return 1
 
-    missing = [
-        name
-        for name in includes
-        if not name.startswith("@") and name not in solved
-    ]
+    def satisfied(name: str) -> bool:
+        if name.startswith("@") or name in solved:
+            return True
+        base, dot, arch = name.rpartition(".")
+        if dot and arch in {"x86_64", "i686", "noarch"}:
+            return any(item.startswith(f"{base}-") and item.endswith(f".{arch}") for item in nevra)
+        return False
+
+    missing = [name for name in includes if not satisfied(name)]
     if missing:
         print("includes missing from the solve: " + ", ".join(missing), file=sys.stderr)
         return 1
@@ -168,6 +184,7 @@ def main() -> int:
         f"# generated={datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}",
         f"# include_sha256={sha256(ROOT / 'packages/include.list')}",
         f"# exclude_sha256={sha256(ROOT / 'packages/exclude.list')}",
+        f"# repos_sha256={repos_sha256()}",
         f"# package_count={len(nevra)}",
         *repo_metadata(),
     ]

@@ -11,10 +11,12 @@ fi
 
 lock_include="$(awk -F= '/^# include_sha256=/{print $2}' /src/packages/lock)"
 lock_exclude="$(awk -F= '/^# exclude_sha256=/{print $2}' /src/packages/lock)"
+lock_repos="$(awk -F= '/^# repos_sha256=/{print $2}' /src/packages/lock)"
 lock_release="$(awk -F= '/^# fedora_release=/{print $2}' /src/packages/lock)"
 now_include="$(sha256sum /src/packages/include.list | awk '{print $1}')"
 now_exclude="$(sha256sum /src/packages/exclude.list | awk '{print $1}')"
-if [[ "$lock_release" != "$RELEASE" || "$lock_include" != "$now_include" || "$lock_exclude" != "$now_exclude" ]]; then
+now_repos="$(find /src/repos -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum | awk '{print $1}')"
+if [[ "$lock_release" != "$RELEASE" || "$lock_include" != "$now_include" || "$lock_exclude" != "$now_exclude" || "$lock_repos" != "$now_repos" ]]; then
     echo "packages/lock is stale. Run just lock." >&2
     exit 1
 fi
@@ -35,6 +37,7 @@ fi
 
 dnf_build -y install btrfs-progs util-linux zstd systemd python3
 write_borked_repo
+install_extra_repos
 rpm --import /src/out/keys/RPM-GPG-KEY-borked || true
 
 img=/src/out/root.img
@@ -98,6 +101,7 @@ VARIANT="${variant}"
 VARIANT_ID=${variant_id}
 EOF
 ln -sfn ../usr/lib/os-release "$sysroot/etc/os-release"
+install_extra_repos "$sysroot"
 cp /src/branding/issue "$sysroot/etc/issue"
 cp /src/branding/issue "$sysroot/usr/lib/issue"
 install -d "$sysroot/usr/share/backgrounds/borked"
