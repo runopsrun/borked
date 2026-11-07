@@ -14,12 +14,24 @@ mount -n -t devtmpfs dev /dev
 mkdir -p /dev/pts
 mount -n -t devpts devpts /dev/pts
 
-# /dev/fd is not created by devtmpfs, so process substitution is unavailable.
-if [[ -c /dev/ttyS0 ]]; then
-    exec >/dev/ttyS0 2>&1
+# The screen is the controlling console. Copy the same stream to the serial
+# port so the qemu test can see it. devtmpfs has no /dev/fd, so use a fifo.
+if [[ -c /dev/tty0 ]]; then
+    exec </dev/tty0
+fi
+consoles=()
+[[ -c /dev/tty0 ]] && consoles+=(/dev/tty0)
+[[ -c /dev/ttyS0 ]] && consoles+=(/dev/ttyS0)
+if ((${#consoles[@]} > 1)); then
+    mkfifo /run/borked-console
+    tee "${consoles[@]}" </run/borked-console >/dev/null &
+    exec >/run/borked-console 2>&1
+elif ((${#consoles[@]} == 1)); then
+    exec >"${consoles[0]}" 2>&1
 fi
 
-echo "borked installer: live init"
+printf '\033[2J\033[H'
+echo "Borked OS installer"
 modprobe virtio_pci || true
 modprobe virtio_blk || true
 modprobe virtio_scsi || true

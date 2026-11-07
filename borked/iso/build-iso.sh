@@ -55,7 +55,7 @@ serial --unit=0 --speed=115200
 terminal_input console serial
 terminal_output console serial
 menuentry "Borked OS installer" {
-    linux /vmlinuz console=tty0 console=ttyS0,115200n8
+    linux /vmlinuz console=ttyS0,115200n8 console=tty0
     initrd /initrd.img
 }
 EOF
