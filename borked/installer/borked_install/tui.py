@@ -43,6 +43,26 @@ KEYBOARDS = (
 USER_RE = re.compile(r"[a-z_][a-z0-9_-]{0,31}")
 HOST_RE = re.compile(r"[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?")
 
+# Two rows, wide enough to read on an 80-column console.
+LOGO = (
+    "█▀▄ █▀█ █▀█ █▄▀ █▀▀ █▀▄",
+    "█▄▀ █▄█ █▀▄ █ █ ██▄ █▄▀",
+)
+
+# Title, then the line under it. The welcome screen uses the first pair.
+COPY = (
+    ("Beautifully broken.", "Stop ricing. Start using it. Probably."),
+    ("Keyboard", "The layout you'll blame later."),
+    ("Language", "English. The rest can wait."),
+    ("Account", "A name. Regret is optional."),
+    ("Password", "You'll forget it. Don't write it here."),
+    ("Hostname", "What it calls itself when it misbehaves."),
+    ("Timezone", "Wrong on purpose, if you insist."),
+    ("Disk", "This one gets erased. No takebacks."),
+    ("Encryption", "Blank means unencrypted. Reversible-ish."),
+    ("Install", "Enter erases the disk. Esc if you flinched."),
+)
+
 
 def disks() -> list[tuple[str, str]]:
     try:
@@ -156,7 +176,7 @@ class Installer:
         bg = _colors()
         curses.init_pair(1, curses.COLOR_RED, bg)
         curses.init_pair(2, curses.COLOR_WHITE, bg)
-        curses.init_pair(3, curses.COLOR_BLACK, curses.COLOR_RED)
+        curses.init_pair(3, curses.COLOR_WHITE, curses.COLOR_BLUE)
         self.accent = curses.color_pair(1) | curses.A_BOLD
         self.dim = curses.A_DIM
         self.body = curses.color_pair(2)
@@ -224,116 +244,103 @@ class Installer:
             xkb_layout=xkb,
         )
 
-    def _header(self, title: str) -> int:
-        _center(self.win, 1, "Borked OS", self.accent)
-        _center(self.win, 2, "Beautifully broken.", self.dim)
-        _center(self.win, 4, title, self.body | curses.A_BOLD)
-        return 6
+    def _origin(self) -> tuple[int, int]:
+        return _origin(self.win)
+
+    def _frame(self) -> int:
+        title, snark = COPY[self.step]
+        return _frame(self.win, title, snark, self.accent, self.dim, self.body)
 
     def _footer(self) -> None:
         height, _width = self.win.getmaxyx()
-        hint = "Enter continue    Esc back    ↑↓ move"
+        x, _panel = self._origin()
         if self.error:
-            _center(self.win, height - 3, self.error, self.accent)
-        _center(self.win, height - 2, hint, self.dim)
+            _add(self.win, height - 3, x, self.error[:_panel], self.accent)
+        _add(self.win, height - 2, x, "enter  continue    esc  back    ↑↓  move", self.dim)
 
     def _welcome(self) -> None:
-        y = self._header("Install")
-        lines = (
-            "The desktop is configured from the answers on the next screens.",
-            "First login opens the session, not another setup wizard.",
-            "",
-            "Keyboard and language come first, so the passphrase",
-            "is typed in the layout you actually use.",
-        )
-        for line in lines:
-            _center(self.win, y, line, self.body)
-            y += 1
+        y = self._frame()
+        self._bar(y, "  Enter", True)
 
     def _keyboard(self) -> None:
-        y = self._header("Keyboard")
+        y = self._frame()
         self._choices(y, [item[2] for item in KEYBOARDS], self.key_i)
 
     def _language(self) -> None:
-        y = self._header("Language")
+        y = self._frame()
         self._choices(y, [item[1] for item in LANGUAGES], self.lang_i)
 
     def _user(self) -> None:
-        y = self._header("Account")
+        y = self._frame()
         self._field_row(y, "Username", self.username, self.field == 0)
-        self._field_row(y + 2, "Full name", self.full_name, self.field == 1)
+        self._field_row(y + 3, "Full name", self.full_name, self.field == 1)
 
     def _password(self) -> None:
-        y = self._header("Password")
-        self._field_row(y, "Password", "*" * len(self.password), self.field == 0)
-        self._field_row(y + 2, "Again", "*" * len(self.again), self.field == 1)
+        y = self._frame()
+        self._field_row(y, "Password", "•" * len(self.password), self.field == 0)
+        self._field_row(y + 3, "Again", "•" * len(self.again), self.field == 1)
 
     def _hostname(self) -> None:
-        y = self._header("Hostname")
+        y = self._frame()
         self._field_row(y, "Name", self.hostname, True)
 
     def _timezone(self) -> None:
-        y = self._header("Timezone")
+        y = self._frame()
         self._field_row(y, "Search", self.filter, True)
-        self._choices(y + 2, self._visible_zones(), self.zone_i)
+        self._choices(y + 3, self._visible_zones(), self.zone_i)
 
     def _disk(self) -> None:
-        y = self._header("Disk")
+        y = self._frame()
         if not self.disks:
-            _center(self.win, y, "No disks found", self.accent)
+            x, _panel = self._origin()
+            _add(self.win, y, x, "No disks found. Awkward.", self.accent)
             return
-        rows = [f"{path}   {size}" for path, size in self.disks]
+        rows = [f"  {path}    {size}" for path, size in self.disks]
         self._choices(y, rows, self.disk_i)
 
     def _encrypt(self) -> None:
-        y = self._header("Encryption")
-        _center(self.win, y, "Leave both blank to skip LUKS.", self.dim)
-        self._field_row(y + 2, "Passphrase", "*" * len(self.luks), self.field == 0)
-        self._field_row(y + 4, "Again", "*" * len(self.luks_again), self.field == 1)
+        y = self._frame()
+        self._field_row(y, "Passphrase", "•" * len(self.luks), self.field == 0)
+        self._field_row(y + 3, "Again", "•" * len(self.luks_again), self.field == 1)
 
     def _confirm(self) -> None:
-        y = self._header("Install")
+        y = self._frame()
         disk = self.disks[self.disk_i][0] if self.disks else "?"
-        keymap = KEYBOARDS[self.key_i][2]
-        lang = LANGUAGES[self.lang_i][1]
-        zone = self._visible_zones()[self.zone_i] if self._visible_zones() else "UTC"
         rows = (
-            f"Disk        {disk}",
-            f"Encryption  {'LUKS' if self.luks else 'off'}",
-            f"User        {self.username}",
-            f"Hostname    {self.hostname}",
-            f"Language    {lang}",
-            f"Keyboard    {keymap}",
-            f"Timezone    {zone}",
+            f"  Disk        {disk}",
+            f"  Encryption  {'LUKS' if self.luks else 'off'}",
+            f"  User        {self.username}",
+            f"  Hostname    {self.hostname}",
+            f"  Language    {LANGUAGES[self.lang_i][1]}",
+            f"  Keyboard    {KEYBOARDS[self.key_i][2]}",
+            f"  Timezone    {self._visible_zones()[self.zone_i] if self._visible_zones() else 'UTC'}",
         )
         for row in rows:
-            _center(self.win, y, row, self.body)
+            self._bar(y, row, False)
             y += 1
-        y += 1
-        _center(self.win, y, f"Enter erases {disk} and installs Borked.", self.accent)
 
     def _field_row(self, y: int, label: str, value: str, active: bool) -> None:
-        _, width = self.win.getmaxyx()
-        box_w = min(52, width - 8)
-        x = max(2, (width - box_w) // 2)
-        attr = self.accent if active else self.dim
-        _add(self.win, y, x, label, attr)
-        _add(self.win, y + 1, x, " " + value, self.body | (curses.A_UNDERLINE if active else 0))
+        x, panel = self._origin()
+        _add(self.win, y, x, label, self.accent if active else self.dim)
+        shown = value[: max(0, panel - 2)]
+        self._bar(y + 1, " " + shown, active)
+
+    def _bar(self, y: int, text: str, selected: bool) -> None:
+        x, panel = self._origin()
+        shown = text[:panel].ljust(panel)
+        _add(self.win, y, x, shown, self.mark if selected else self.body)
 
     def _choices(self, y: int, rows: list[str], selected: int) -> None:
-        _, width = self.win.getmaxyx()
         height = self.win.getmaxyx()[0]
+        x, _panel = self._origin()
         room = max(1, height - y - 4)
         if not rows:
-            _center(self.win, y, "No matches", self.dim)
+            _add(self.win, y, x, "No matches.", self.dim)
             return
         selected = max(0, min(selected, len(rows) - 1))
         start = max(0, selected - room + 1)
         for offset, row in enumerate(rows[start : start + room]):
-            mark = start + offset == selected
-            attr = self.mark if mark else self.body
-            text = f"  {row}  " if mark else f"  {row}"
-            _center(self.win, y + offset, text, attr)
+            self._bar(y + offset, row if row.startswith("  ") else "  " + row, start + offset == selected)
 
     def _visible_zones(self) -> list[str]:
         query = self.filter.lower()
@@ -420,6 +427,44 @@ class Installer:
         return self.step >= 10
 
 
+def _origin(win) -> tuple[int, int]:
+    _height, width = win.getmaxyx()
+    panel = min(56, max(20, width - 4))
+    return max(1, (width - panel) // 2), panel
+
+
+def _frame(win, title: str, snark: str, accent: int, dim: int, body: int) -> int:
+    x, _panel = _origin(win)
+    y = 1
+    for line in LOGO:
+        _add(win, y, x, line, accent | curses.A_BOLD)
+        y += 1
+    _add(win, y, x, "Beautifully broken.", dim)
+    y += 2
+    if title and title != "Beautifully broken.":
+        _add(win, y, x, title, body | curses.A_BOLD)
+        y += 1
+    _add(win, y, x, snark, dim)
+    return y + 2
+
+
+def _paint_palette() -> None:
+    # The Linux console only has 16 colors. Match the site: near-black
+    # field, pink mark, light text, and a quiet surface for the selection.
+    colors = {
+        "0": "0b0a12",
+        "1": "ff3d81",
+        "4": "2a2540",
+        "7": "f4f0ff",
+        "8": "9a93b5",
+    }
+    seq = "".join(f"\033]P{key}{value}" for key, value in colors.items())
+    try:
+        os.write(1, (seq + "\033[40m\033[37m\033[2J").encode())
+    except OSError:
+        return
+
+
 def _attach_console() -> None:
     # live-init tees stdout through a fifo so the serial log can see it.
     # curses runs cbreak on that fd, and a fifo is not a terminal.
@@ -436,6 +481,7 @@ def _attach_console() -> None:
     finally:
         if fd > 2:
             os.close(fd)
+    _paint_palette()
 
 
 def ask(stream: str) -> Config:
@@ -460,17 +506,26 @@ def _colors() -> int:
 def _present(stdscr, cfg: Config) -> None:
     os.environ["BORKED_QUIET"] = "1"
     curses.curs_set(0)
-    curses.init_pair(1, curses.COLOR_RED, _colors())
+    bg = _colors()
+    curses.init_pair(1, curses.COLOR_RED, bg)
+    curses.init_pair(2, curses.COLOR_WHITE, bg)
+    curses.init_pair(3, curses.COLOR_WHITE, curses.COLOR_BLUE)
     accent = curses.color_pair(1) | curses.A_BOLD
     status = {"line": "Preparing the disk"}
 
     def redraw(line: str) -> None:
         status["line"] = line
         stdscr.erase()
-        _center(stdscr, 1, "Borked OS", accent)
-        _center(stdscr, 2, "Beautifully broken.", curses.A_DIM)
-        _center(stdscr, 6, "Installing", curses.A_BOLD)
-        _center(stdscr, 8, line, curses.color_pair(1))
+        y = _frame(
+            stdscr,
+            "Installing",
+            "Breaking it in. This is a feature.",
+            accent,
+            curses.A_DIM,
+            curses.color_pair(2),
+        )
+        x, panel = _origin(stdscr)
+        _add(stdscr, y, x, line[:panel].ljust(panel), accent)
         stdscr.refresh()
 
     redraw(status["line"])
@@ -493,19 +548,32 @@ def _present(stdscr, cfg: Config) -> None:
         sys.stderr = old_err
 
     stdscr.erase()
-    _center(stdscr, 1, "Borked OS", accent)
-    _center(stdscr, 2, "Beautifully broken.", curses.A_DIM)
     if failed:
-        _center(stdscr, 6, "Install failed", accent)
-        _center(stdscr, 8, failed)
-        for offset, line in enumerate(log.lines[-8:]):
-            _center(stdscr, 10 + offset, line, curses.A_DIM)
+        y = _frame(
+            stdscr,
+            "Slightly borked.",
+            "This was not the feature.",
+            accent,
+            curses.A_DIM,
+            curses.color_pair(2),
+        )
+        x, panel = _origin(stdscr)
+        _add(stdscr, y, x, failed[:panel], accent)
+        for offset, line in enumerate(log.lines[-6:]):
+            _add(stdscr, y + 2 + offset, x, line[:panel], curses.A_DIM)
         stdscr.refresh()
         while True:
             stdscr.getch()
-    _center(stdscr, 6, "Install finished", curses.A_BOLD)
-    _center(stdscr, 8, "Remove the install media.")
-    _center(stdscr, 9, "Press Enter to reboot.")
+    y = _frame(
+        stdscr,
+        "It's on the disk.",
+        "Remove the media, then Enter. Try to look sure.",
+        accent,
+        curses.A_DIM,
+        curses.color_pair(2),
+    )
+    x, panel = _origin(stdscr)
+    _add(stdscr, y, x, "  Enter".ljust(panel), curses.color_pair(3) | curses.A_BOLD)
     stdscr.refresh()
     while True:
         key = stdscr.getch()

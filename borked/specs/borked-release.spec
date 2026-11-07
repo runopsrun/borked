@@ -40,15 +40,15 @@ case "$variant" in
 esac
 
 cat > %{buildroot}/usr/lib/os-release << EOF
-NAME="Borked OS"
+NAME="Borked"
 VERSION="%{fedora_release}"
 ID=borked
 ID_LIKE=fedora
 VERSION_ID=%{fedora_release}
-PRETTY_NAME="Borked OS"
+PRETTY_NAME="Borked"
 ANSI_COLOR="0;38;2;232;80;70"
 CPE_NAME="cpe:/o:borked:borked:%{fedora_release}"
-HOME_URL="https://borked.invalid"
+HOME_URL="https://projectborked.com"
 VARIANT="$variant"
 VARIANT_ID=$variant_id
 EOF

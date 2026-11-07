@@ -54,7 +54,7 @@ set default=0
 serial --unit=0 --speed=115200
 terminal_input console serial
 terminal_output console serial
-menuentry "Borked OS installer" {
+menuentry "Borked" {
     linux /vmlinuz quiet loglevel=3 consoleblank=0 console=ttyS0,115200n8 console=tty0
     initrd /initrd.img
 }

@@ -85,21 +85,39 @@ case "$variant" in
     *) variant=Development; variant_id=development ;;
 esac
 cat >"$sysroot/usr/lib/os-release" <<EOF
-NAME="Borked OS"
+NAME="Borked"
 VERSION="${RELEASE}"
 ID=borked
 ID_LIKE=fedora
 VERSION_ID=${RELEASE}
-PRETTY_NAME="Borked OS"
+PRETTY_NAME="Borked"
 ANSI_COLOR="0;38;2;232;80;70"
 CPE_NAME="cpe:/o:borked:borked:${RELEASE}"
-HOME_URL="https://borked.invalid"
+HOME_URL="https://projectborked.com"
 VARIANT="${variant}"
 VARIANT_ID=${variant_id}
 EOF
 ln -sfn ../usr/lib/os-release "$sysroot/etc/os-release"
 cp /src/branding/issue "$sysroot/etc/issue"
 cp /src/branding/issue "$sysroot/usr/lib/issue"
+install -d "$sysroot/usr/share/backgrounds/borked"
+cp /src/branding/wallpaper.png "$sysroot/usr/share/backgrounds/borked/default.png"
+# cosmic-bg ships this entry pointed at Fedora's default-dark wallpaper.
+# The greeter reads it when the greeter user has no wallpaper of their own.
+bgdir="$sysroot/usr/share/cosmic/com.system76.CosmicBackground/v1"
+if [[ -d "$bgdir" ]]; then
+    cat >"$bgdir/all" <<'EOF'
+(
+    output: "all",
+    source: Path("/usr/share/backgrounds/borked/default.png"),
+    filter_by_theme: false,
+    rotation_frequency: 3600,
+    filter_method: Lanczos,
+    scaling_mode: Zoom,
+    sampling_method: Alphanumeric,
+)
+EOF
+fi
 cp /src/packages/exclude.list "$sysroot/usr/share/borked/exclude.list"
 printf '%s\n' 'LANG=en_US.UTF-8' >"$sysroot/etc/locale.conf"
 : >"$sysroot/etc/machine-id"

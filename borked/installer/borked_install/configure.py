@@ -11,6 +11,20 @@ from borked_install.partition import Layout
 from borked_install.util import run
 
 
+# Same entry the image writes over cosmic-bg's Fedora default, so the
+# account keeps the site background if that package is updated later.
+_WALLPAPER = """(
+    output: "all",
+    source: Path("/usr/share/backgrounds/borked/default.png"),
+    filter_by_theme: false,
+    rotation_frequency: 3600,
+    filter_method: Lanczos,
+    scaling_mode: Zoom,
+    sampling_method: Alphanumeric,
+)
+"""
+
+
 def _token(value: str) -> bool:
     return bool(value) and all(ch.isalnum() or ch in "_.@-" for ch in value)
 
@@ -102,6 +116,9 @@ def configure(root: str, cfg: Config, layout: Layout, fs_uuid: str) -> None:
         f"options:None,repeat_delay:600,repeat_rate:25)\n"
     )
     Path(os.path.join(settings, "system_locales")).write_text(f'["{locale}"]\n')
+    background = os.path.join(config_dir, "cosmic/com.system76.CosmicBackground/v1")
+    os.makedirs(background, exist_ok=True)
+    Path(os.path.join(background, "all")).write_text(_WALLPAPER)
     run(
         [
             "chroot",

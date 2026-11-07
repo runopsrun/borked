@@ -30,23 +30,25 @@ elif ((${#consoles[@]} == 1)); then
 fi
 
 splash() {
-    printf '\033[2J\033[H\033[?25l\n\n\n\n\n'
-    printf '                       Borked OS\n'
-    printf '                   Beautifully broken.\n\n'
-    printf '                 %s\n' "$1"
+    printf '\033]P00b0a12\033]P1ff3d81\033]P42a2540\033]P7f4f0ff\033]P89a93b5'
+    printf '\033%%G\033[40m\033[37m\033[2J\033[H\033[?25l\n\n'
+    printf '  \033[1;31m█▀▄ █▀█ █▀█ █▄▀ █▀▀ █▀▄\033[0;37m\n'
+    printf '  \033[1;31m█▄▀ █▄█ █▀▄ █ █ ██▄ █▄▀\033[0;37m\n'
+    printf '  Beautifully broken.\n\n'
+    printf '  %s\n' "$1"
 }
 
 for font in \
-    /usr/lib/kbd/consolefonts/latarcyrheb-sun32.psfu.gz \
-    /usr/lib/kbd/consolefonts/LatArCyrHeb-32.psfu.gz \
-    /lib/kbd/consolefonts/latarcyrheb-sun32.psfu.gz
+    /usr/lib/kbd/consolefonts/latarcyrheb-sun16.psfu.gz \
+    /usr/lib/kbd/consolefonts/LatArCyrHeb-16.psfu.gz \
+    /lib/kbd/consolefonts/latarcyrheb-sun16.psfu.gz
 do
     if [[ -f "$font" ]]; then
         setfont "$font" || true
         break
     fi
 done
-splash "Starting the installer"
+splash "Breaking it in."
 
 modprobe virtio_pci || true
 modprobe virtio_blk || true
@@ -78,7 +80,7 @@ fi
 export BORKED_STREAM=/run/iso/borked-root.btrfs.zst
 export PYTHONPATH=/usr/share/borked/installer
 export TERM=linux
-splash "Starting the installer"
+splash "Probably ready."
 printf '\033[?25h'
 # This shell is PID 1. If it exits, the kernel panics even when the
 # installer returned success.
