@@ -1,0 +1,10 @@
+[cursor]
+name=Cursor
+baseurl=https://downloads.cursor.com/yumrepo
+type=rpm-md
+enabled=1
+gpgcheck=1
+repo_gpgcheck=0
+gpgkey=https://downloads.cursor.com/keys/anysphere.asc
+priority=110
+skip_if_unavailable=0

@@ -32,5 +32,6 @@ test: iso
 # Exclude-list failure test and a syntax check. Does not boot a VM.
 check:
     cd "{{justfile_directory()}}" && ./image/podman-run.sh ./ci/test-exclude.sh
-    cd "{{justfile_directory()}}" && python3 -m compileall -q installer ci
+    cd "{{justfile_directory()}}" && python3 ci/test-apps.py
+    cd "{{justfile_directory()}}" && python3 -m compileall -q installer ci apps
     cd "{{justfile_directory()}}" && bash -n image/podman-run.sh image/lock.sh image/build-rpms.sh image/build-root.sh image/qemu.sh iso/build-iso.sh iso/live-init ci/test-exclude.sh

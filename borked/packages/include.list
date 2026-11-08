@@ -37,6 +37,7 @@ p11-kit-server
 borked-release
 borked-repos
 borked-defaults
+borked-apps
 # Daily apps. wine-core's scriptlet aborts the image transaction, so
 # the root build installs those two packages with scripts off and
 # points /usr/bin/wine at wine64 itself.

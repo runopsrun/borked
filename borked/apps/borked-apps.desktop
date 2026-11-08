@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=Borked Apps
+Comment=Optional software. Try to look sure.
+Exec=borked apps
+Terminal=true
+Type=Application
+Categories=System;

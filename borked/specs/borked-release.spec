@@ -56,7 +56,7 @@ EOF
 install -m 0644 %{SOURCE0} %{buildroot}/usr/share/borked/issue
 install -m 0755 %{SOURCE1} %{buildroot}/usr/bin/borked-selfcheck
 install -m 0644 %{SOURCE2} %{buildroot}/usr/share/borked/exclude.list
-printf '%s\n' borked-release borked-repos borked-defaults > %{buildroot}/etc/dnf/protected.d/borked.conf
+printf '%s\n' borked-release borked-repos borked-defaults borked-apps > %{buildroot}/etc/dnf/protected.d/borked.conf
 
 %post
 if [ -d /usr/lib ]; then

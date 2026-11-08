@@ -49,6 +49,7 @@ cp /src/branding/wallpaper.png "$top/SOURCES/wallpaper.png"
 cp /src/branding/accent_palette_dark "$top/SOURCES/accent_palette_dark"
 cp /src/branding/accent_palette_light "$top/SOURCES/accent_palette_light"
 cp /src/specs/*.spec "$top/SPECS/"
+tar -C /src/apps --exclude __pycache__ --exclude '*.pyc' -cf "$top/SOURCES/borked-apps.tar" .
 
 defines=(
     --define "_topdir $top"
@@ -62,7 +63,7 @@ defines=(
     --define "_gpg_sign_cmd_extra_args --batch --pinentry-mode loopback --passphrase ''"
 )
 
-for spec in borked-release borked-repos borked-defaults; do
+for spec in borked-release borked-repos borked-defaults borked-apps; do
     rpmbuild "${defines[@]}" -bb "$top/SPECS/${spec}.spec"
 done
 
