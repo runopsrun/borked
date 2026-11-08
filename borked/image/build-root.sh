@@ -74,13 +74,68 @@ exclude_args=()
 for name in "${excludes[@]}"; do
     exclude_args+=("--exclude=${name}")
 done
+rest=()
+wine=()
+for pkg in "${packages[@]}"; do
+    case "$pkg" in
+        wine-core-*|wine-filesystem-*) wine+=("$pkg") ;;
+        *) rest+=("$pkg") ;;
+    esac
+done
+# wine-filesystem requires wine-core, so a name exclude is what keeps
+# dnf from pulling the broken scriptlet back into the main transaction.
+hold_wine=(--exclude=wine-core --exclude=wine-filesystem)
+
+# crypto-policies' %pre execs /bin/sh, and rpm only orders that after
+# glibc when the package set happens to sort that way. A small first
+# transaction puts glibc and bash down with nothing that runs /bin/sh.
+# openssl-libs is what pulls crypto-policies in.
+boot=()
+for pkg in "${rest[@]}"; do
+    case "$pkg" in
+        filesystem-[0-9]*|bash-[0-9]*|glibc-[0-9]*) boot+=("$pkg") ;;
+    esac
+done
+dnf_build -y \
+    --installroot="$sysroot" \
+    --use-host-config \
+    --setopt=tsflags=nocontexts \
+    "${exclude_args[@]}" \
+    "${hold_wine[@]}" \
+    --exclude=crypto-policies \
+    --exclude=openssl-libs \
+    --exclude=curl \
+    install "${boot[@]}"
+# With the identity packages excluded, dnf's empty-root setup installs
+# generic-release, which conflicts with borked-release. Drop it.
+for pkg in generic-release generic-release-common fedora-release-identity-basic; do
+    if rpm --root "$sysroot" -q "$pkg" >/dev/null 2>&1; then
+        rpm --root "$sysroot" -e --nodeps "$pkg"
+    fi
+done
 
 dnf_build -y \
     --installroot="$sysroot" \
     --use-host-config \
     --setopt=tsflags=nocontexts \
     "${exclude_args[@]}" \
-    install "${packages[@]}"
+    "${hold_wine[@]}" \
+    install "${rest[@]}"
+
+# wine-core 11.20 registers its d3d8 DLL under the dxgi alternative name,
+# and that non-zero scriptlet fails the whole transaction. The DLLs are
+# already files in the package. Install without scripts, then point wine
+# at wine64. wine32 stays available as its own binary.
+if ((${#wine[@]} > 0)); then
+    dnf_build -y \
+        --installroot="$sysroot" \
+        --use-host-config \
+        --setopt=tsflags=nocontexts,noscripts \
+        "${exclude_args[@]}" \
+        install "${wine[@]}"
+    chroot "$sysroot" /usr/bin/alternatives --install /usr/bin/wine wine /usr/bin/wine64 20
+    chroot "$sysroot" /usr/bin/alternatives --install /usr/bin/wineserver wineserver /usr/bin/wineserver64 20
+fi
 
 variant="${BORKED_VARIANT:-Development}"
 case "$variant" in
@@ -143,9 +198,14 @@ systemctl --root="$sysroot" enable cosmic-greeter-daemon.service
 systemctl --root="$sysroot" enable NetworkManager.service
 systemctl --root="$sysroot" set-default graphical.target
 
+install -D -m 0644 /src/repos/flathub.flatpakrepo "$sysroot/usr/share/borked/flathub.flatpakrepo"
 for fs in proc sys dev run; do
     mount --bind "/$fs" "$sysroot/$fs"
 done
+# Full Flathub, not Fedora's filtered remote. The flatpakrepo file carries
+# the signing key, so this does not depend on a second download of the key.
+chroot "$sysroot" flatpak remote-add --if-not-exists --system flathub /usr/share/borked/flathub.flatpakrepo
+chroot "$sysroot" flatpak remotes --system --show-details | grep -q '^flathub'
 for kdir in "$sysroot"/lib/modules/*; do
     [[ -d "$kdir" ]] || continue
     kver="$(basename "$kdir")"
