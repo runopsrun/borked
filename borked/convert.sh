@@ -60,7 +60,8 @@ done
 
 say "Fedora ${RELEASE}. COSMIC. Still your files."
 say "The name becomes Borked. The wallpaper too. Coming along: ${apps[*]}, plus Wine."
-say "Repos get added. Flathub gets the real remote, not Fedora's filtered one."
+say "Repos get added. Flathub gets the real remote, not Fedora's filtered one. COSMIC's remote comes too."
+say "The top bar is Quickshell. The dock stays. COSMIC still runs the rest."
 say "SELinux stays. gpgcheck stays. Well, I hope this doesn't break it."
 if [[ "$check" -eq 1 ]]; then
     say "Looked. Didn't touch it."
@@ -119,7 +120,9 @@ if ! rpm -q flatpak >/dev/null 2>&1; then
     dnf -y --setopt=gpgcheck=1 install flatpak
 fi
 install -D -m 0644 "$ROOT/repos/flathub.flatpakrepo" /usr/share/borked/flathub.flatpakrepo
+install -D -m 0644 "$ROOT/repos/cosmic.flatpakrepo" /usr/share/borked/cosmic.flatpakrepo
 flatpak remote-add --if-not-exists --system flathub /usr/share/borked/flathub.flatpakrepo
+flatpak remote-add --if-not-exists --system cosmic /usr/share/borked/cosmic.flatpakrepo
 
 wallpaper="$(cat <<'EOF'
 (
@@ -133,6 +136,9 @@ wallpaper="$(cat <<'EOF'
 )
 EOF
 )"
+panel_system=/usr/share/cosmic/com.system76.CosmicPanel/v1/entries
+[[ -f "$panel_system" ]] || die "cosmic-panel has no entries list. The dock swap has nowhere to land."
+install -m 0644 "$ROOT/branding/cosmic-panel-entries" "$panel_system"
 bgdir=/usr/share/cosmic/com.system76.CosmicBackground/v1
 if [[ -d "$bgdir" ]]; then
     printf '%s\n' "$wallpaper" >"$bgdir/all"
@@ -144,6 +150,10 @@ if [[ -n "$user" && "$user" != root ]]; then
         dest="$home/.config/cosmic/com.system76.CosmicBackground/v1"
         install -d -m 0755 "$dest"
         printf '%s\n' "$wallpaper" >"$dest/all"
+        panel="$home/.config/cosmic/com.system76.CosmicPanel/v1/entries"
+        if [[ -f "$panel" ]]; then
+            printf '%s\n' '["Dock"]' >"$panel"
+        fi
         chown -R "$user:$user" "$home/.config/cosmic"
     fi
 fi
@@ -151,7 +161,8 @@ fi
 if systemctl cat cosmic-greeter.service >/dev/null 2>&1; then
     systemctl enable cosmic-greeter.service cosmic-greeter-daemon.service
 fi
+systemctl enable bluetooth.service
 
 grep -q '^ID=borked$' /etc/os-release || die "os-release did not flip. The whole point, missed."
 say "Motherfucker. Oh wait, never mind. It worked."
-say "Log out. The name and the wallpaper catch up when you do. Try to look sure."
+say "Log out. The name, the wallpaper, and the bar catch up when you do. Try to look sure."

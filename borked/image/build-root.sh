@@ -161,6 +161,15 @@ cp /src/branding/issue "$sysroot/etc/issue"
 cp /src/branding/issue "$sysroot/usr/lib/issue"
 install -d "$sysroot/usr/share/backgrounds/borked"
 cp /src/branding/wallpaper.png "$sysroot/usr/share/backgrounds/borked/default.png"
+# cosmic-panel owns this file and ships Panel plus Dock. The top edge
+# belongs to Quickshell. A later cosmic-panel update is put back by
+# borked-defaults' file trigger.
+panel_entries="$sysroot/usr/share/cosmic/com.system76.CosmicPanel/v1/entries"
+if [[ ! -f "$panel_entries" ]]; then
+    echo "cosmic-panel entries file is missing" >&2
+    exit 1
+fi
+cp /src/branding/cosmic-panel-entries "$panel_entries"
 # cosmic-bg ships this entry pointed at Fedora's default-dark wallpaper.
 # The greeter reads it when the greeter user has no wallpaper of their own.
 bgdir="$sysroot/usr/share/cosmic/com.system76.CosmicBackground/v1"
@@ -196,16 +205,31 @@ grep -q '^ID=borked$' "$sysroot/etc/os-release"
 systemctl --root="$sysroot" enable cosmic-greeter.service
 systemctl --root="$sysroot" enable cosmic-greeter-daemon.service
 systemctl --root="$sysroot" enable NetworkManager.service
+systemctl --root="$sysroot" enable bluetooth.service
 systemctl --root="$sysroot" set-default graphical.target
 
 install -D -m 0644 /src/repos/flathub.flatpakrepo "$sysroot/usr/share/borked/flathub.flatpakrepo"
+install -D -m 0644 /src/repos/cosmic.flatpakrepo "$sysroot/usr/share/borked/cosmic.flatpakrepo"
 for fs in proc sys dev run; do
     mount --bind "/$fs" "$sysroot/$fs"
 done
-# Full Flathub, not Fedora's filtered remote. The flatpakrepo file carries
-# the signing key, so this does not depend on a second download of the key.
+# Full Flathub, not Fedora's filtered remote, plus Pop's COSMIC remote.
+# The flatpakrepo files carry the signing keys, so this does not depend on
+# a second download of either key.
 chroot "$sysroot" flatpak remote-add --if-not-exists --system flathub /usr/share/borked/flathub.flatpakrepo
+chroot "$sysroot" flatpak remote-add --if-not-exists --system cosmic /usr/share/borked/cosmic.flatpakrepo
 chroot "$sysroot" flatpak remotes --system --show-details | grep -q '^flathub'
+chroot "$sysroot" flatpak remotes --system --show-details | grep -q '^cosmic'
+awk '
+    /^\[remote "flathub"\]$/ { remote = "flathub"; next }
+    /^\[remote "cosmic"\]$/ { remote = "cosmic"; next }
+    /^\[/ { remote = "" }
+    remote == "flathub" && $0 == "url=https://dl.flathub.org/repo/" { flathub_url = 1 }
+    remote == "flathub" && $0 == "gpg-verify=true" { flathub_gpg = 1 }
+    remote == "cosmic" && $0 == "url=https://apt.pop-os.org/cosmic/" { cosmic_url = 1 }
+    remote == "cosmic" && $0 == "gpg-verify=true" { cosmic_gpg = 1 }
+    END { exit (flathub_url && flathub_gpg && cosmic_url && cosmic_gpg) ? 0 : 1 }
+' "$sysroot/var/lib/flatpak/repo/config"
 for kdir in "$sysroot"/lib/modules/*; do
     [[ -d "$kdir" ]] || continue
     kver="$(basename "$kdir")"

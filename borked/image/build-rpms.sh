@@ -48,6 +48,8 @@ cp "$keydir/RPM-GPG-KEY-borked" "$top/SOURCES/RPM-GPG-KEY-borked"
 cp /src/branding/wallpaper.png "$top/SOURCES/wallpaper.png"
 cp /src/branding/accent_palette_dark "$top/SOURCES/accent_palette_dark"
 cp /src/branding/accent_palette_light "$top/SOURCES/accent_palette_light"
+cp /src/branding/quickshell/shell.qml "$top/SOURCES/shell.qml"
+cp /src/branding/borked-quickshell.service "$top/SOURCES/borked-quickshell.service"
 cp /src/specs/*.spec "$top/SPECS/"
 tar -C /src/apps --exclude __pycache__ --exclude '*.pyc' -cf "$top/SOURCES/borked-apps.tar" .
 

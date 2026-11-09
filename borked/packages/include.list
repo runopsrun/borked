@@ -38,6 +38,12 @@ borked-release
 borked-repos
 borked-defaults
 borked-apps
+# Top bar. cosmic-session still launches cosmic-panel; the system
+# entries list keeps only the dock, and this process owns the top edge.
+quickshell
+# The bar talks to BlueZ and UPower. The desktop group does not pull them.
+bluez
+upower
 # Daily apps. wine-core's scriptlet aborts the image transaction, so
 # the root build installs those two packages with scripts off and
 # points /usr/bin/wine at wine64 itself.

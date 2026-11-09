@@ -1,6 +1,6 @@
 Name:           borked-release
 Version:        1
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        Borked OS release identity
 License:        MIT
 URL:            https://borked.invalid
@@ -75,5 +75,7 @@ fi
 /etc/dnf/protected.d/borked.conf
 
 %changelog
+* Mon Nov 09 2026 Borked OS <dev@borked.invalid> - 1-2
+- The boot check looks for BlueZ, UPower, and bluetooth.service.
 * Fri Nov 06 2026 Borked OS <dev@borked.invalid> - 1-1
 - Initial Borked OS release identity.

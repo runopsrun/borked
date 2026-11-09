@@ -1,0 +1,12 @@
+[Unit]
+Description=Borked bar
+PartOf=cosmic-session.target
+After=graphical-session-pre.target
+
+[Service]
+ExecStart=/usr/bin/quickshell -p /usr/share/borked/quickshell
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=cosmic-session.target

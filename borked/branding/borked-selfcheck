@@ -73,6 +73,51 @@ else
     fail=1
 fi
 
+flatpak_cfg=/var/lib/flatpak/repo/config
+panel_entries=/usr/share/cosmic/com.system76.CosmicPanel/v1/entries
+if [[ -f "$panel_entries" ]] && grep -qx '\["Dock"\]' "$panel_entries"; then
+    say "ok panel-entries=dock"
+else
+    say "FAIL panel-entries"
+    fail=1
+fi
+
+if rpm -q quickshell >/dev/null 2>&1 \
+    && [[ -f /usr/share/borked/quickshell/shell.qml ]] \
+    && [[ -e /usr/lib/systemd/user/cosmic-session.target.wants/borked-quickshell.service ]]
+then
+    say "ok quickshell"
+else
+    say "FAIL quickshell"
+    fail=1
+fi
+
+if rpm -q bluez >/dev/null 2>&1 \
+    && rpm -q upower >/dev/null 2>&1 \
+    && systemctl is-enabled bluetooth.service >/dev/null 2>&1
+then
+    say "ok status-services"
+else
+    say "FAIL status-services"
+    fail=1
+fi
+
+if [[ -f "$flatpak_cfg" ]] && awk '
+    /^\[remote "flathub"\]$/ { remote = "flathub"; next }
+    /^\[remote "cosmic"\]$/ { remote = "cosmic"; next }
+    /^\[/ { remote = "" }
+    remote == "flathub" && $0 == "url=https://dl.flathub.org/repo/" { flathub_url = 1 }
+    remote == "flathub" && $0 == "gpg-verify=true" { flathub_gpg = 1 }
+    remote == "cosmic" && $0 == "url=https://apt.pop-os.org/cosmic/" { cosmic_url = 1 }
+    remote == "cosmic" && $0 == "gpg-verify=true" { cosmic_gpg = 1 }
+    END { exit (flathub_url && flathub_gpg && cosmic_url && cosmic_gpg) ? 0 : 1 }
+' "$flatpak_cfg"; then
+    say "ok flatpak-remotes"
+else
+    say "FAIL flatpak-remotes"
+    fail=1
+fi
+
 list=/usr/share/borked/exclude.list
 if [[ ! -f "$list" ]]; then
     say "FAIL exclude-list-missing"
