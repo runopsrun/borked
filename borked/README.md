@@ -11,6 +11,7 @@ just qemu    # unpack that stream onto a raw disk and boot it
 just iso     # hybrid installer ISO
 just test    # unattended ISO install in qemu, then self-check
 just check   # exclude-list failure test, no VM
+just convert # this Fedora COSMIC machine becomes Borked
 ```
 
 `just qemu` and `just test` boot a VM and run `/usr/bin/borked-selfcheck`. A script that exits 0 without that boot is not a finished image.
@@ -18,3 +19,5 @@ just check   # exclude-list failure test, no VM
 Dev builds set `VARIANT=Development`, generate a throwaway signing key under `out/keys/`, and do not sign the ISO. There is no release key yet, so there is no release fingerprint to publish. Set `BORKED_VARIANT=COSMIC` and `BORKED_RELEASE_KEY` to a detached private key only when cutting a signed release. Never commit `out/`.
 
 On an installed system, `borked` is the command and `borked apps` installs optional software. Those apps are lines in `apps/catalog`, not packages in the base image.
+
+`sudo ./convert.sh` turns a Fedora COSMIC install of this release into Borked. Files stay. The name, the wallpaper, the repos, and the daily apps change. `--check` only looks. `--yes` skips the question. It will refuse the wrong Fedora release, a machine without COSMIC, and SELinux disabled. The lines are snark. The reason it stopped is still in the line.

@@ -8,7 +8,8 @@
 - Do not hand-edit `packages/lock`. Change the lists and run `just lock`.
 - Dev builds stay `VARIANT=Development` and unsigned. The dev signing key is generated under `out/keys/` and is gitignored.
 - Branding RPMs are built with `rpmbuild` inside `quay.io/fedora/fedora:${RELEASE}`. That container is the pinned Fedora release. Do not build them on the host.
-- `just` is the entry point: `lock`, `root`, `iso`, `qemu`, `test`, `check`.
+- `just` is the entry point: `lock`, `root`, `iso`, `qemu`, `test`, `check`, `convert`.
+- When a change affects the image, the installer, `convert.sh`, the package lists, or a command a person runs, update `README.md` and this file in the same change. Update `PLAN.md` only when the build contract itself changes.
 - After image or installer changes, `just qemu` or `just test` is the definition of done. A script that exits 0 without a booted VM is not done.
 - Rootless podman on this machine cannot `losetup`. `just root` uses rootful podman (`sudo podman --privileged`). Do not drop `btrfs send` because of that.
 - v1 is x86_64 UEFI. The ISO is a hybrid image so it can boot BIOS and UEFI. The installed disk is UEFI: ESP plus btrfs, shim copied to `EFI/BOOT/BOOTX64.EFI`.
@@ -28,3 +29,4 @@ This file is the project memory. A new agent does not have the chat that produce
 - `wine-core` and `wine-filesystem` are installed in their own transaction with scriptlets off, then `/usr/bin/wine` is pointed at `wine64`. Fedora's `wine-core` 11.20 script registers the `d3d8` DLL under the `dxgi` alternative name and fails the whole rpm transaction. Do not drop Wine, and do not turn those scriptlets back on. The earlier glibc/bash bootstrap and the `generic-release` removal in `image/build-root.sh` are there because a single large transaction runs `crypto-policies` `%pre` before `/bin/sh` exists. Do not collapse the install back into one `dnf` transaction.
 - The public package repo is not hosted yet. `specs/borked-repos.spec` still points at `https://repo.borked.invalid/`. Do not publish the Borked repo from COPR, and do not set `gpgcheck=0` to get a package in. COPR is an upstream we consume (Zed, Herdr), not where Borked publishes.
 - `out/` is gitignored. It holds the ISO, the stream, and the dev signing key. A new machine generates its own dev key on the first build. Never commit a private key.
+- `convert.sh` (`just convert`) turns a Fedora COSMIC install of the pinned release into Borked. It builds the branding RPMs in the Fedora container and installs them on that machine. It is not a second image installer. It does not disable SELinux or `gpgcheck`, and it does not wipe home. Its messages are snark. The error still names the real reason.
