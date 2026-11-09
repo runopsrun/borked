@@ -10,8 +10,8 @@ from borked_apps.install import InstallError, install, is_installed
 from borked_apps.voice import ALREADY, DONE, EMPTY, FAIL, MARK, MIXED, OK, START, UNMARK, WORKING, say
 
 LOGO = (
-    "█▀▄ █▀█ █▀█ █▄▀ █▀▀ █▀▄",
-    "█▄▀ █▄█ █▀▄ █ █ ██▄ █▄▀",
+    "█▄█ █▀█ █▀█ █▄▀ █▀▀ █▀▄",
+    "█▀█ █▄█ █▀▄ █ █ ██▄ █▄▀",
 )
 
 

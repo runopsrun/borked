@@ -45,8 +45,9 @@ HOST_RE = re.compile(r"[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?")
 
 # Two rows, wide enough to read on an 80-column console.
 LOGO = (
-    "█▀▄ █▀█ █▀█ █▄▀ █▀▀ █▀▄",
-    "█▄▀ █▄█ █▀▄ █ █ ██▄ █▄▀",
+    # B is █▄█/█▀█. The D shape (█▀▄/█▄▀) made the word read as DORKED.
+    "█▄█ █▀█ █▀█ █▄▀ █▀▀ █▀▄",
+    "█▀█ █▄█ █▀▄ █ █ ██▄ █▄▀",
 )
 
 # Title, then the line under it. The welcome screen uses the first pair.
