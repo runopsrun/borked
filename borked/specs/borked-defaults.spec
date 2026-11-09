@@ -1,6 +1,6 @@
 Name:           borked-defaults
 Version:        1
-Release:        3%{?dist}
+Release:        4%{?dist}
 Summary:        Borked wallpaper, theme seed, and Quickshell bar
 License:        MIT
 URL:            https://borked.invalid
@@ -43,6 +43,8 @@ if [ -f "$entries" ]; then
 fi
 
 %changelog
+* Mon Nov 09 2026 Borked OS <dev@borked.invalid> - 1-4
+- The bar floats, and the status icons share one control center.
 * Mon Nov 09 2026 Borked OS <dev@borked.invalid> - 1-3
 - The bar shows sound, network, Bluetooth, battery, the tray, and power.
 * Mon Nov 09 2026 Borked OS <dev@borked.invalid> - 1-2

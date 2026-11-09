@@ -22,6 +22,6 @@ On an installed system, `borked` is the command and `borked apps` installs optio
 
 The image enables two system Flatpak remotes. Flathub is the full remote at `https://dl.flathub.org/repo/`. The COSMIC remote is `https://apt.pop-os.org/cosmic/`. Both `.flatpakrepo` files live in `repos/` and carry their signing keys. `convert.sh` adds the same two remotes.
 
-The top bar is Quickshell (`/usr/share/borked/quickshell/shell.qml`). COSMIC's panel process still starts, and its system entries list keeps the dock, so the top edge is free. The user unit is `borked-quickshell.service`. The bar carries sound, Bluetooth, network, battery on a laptop, the system tray, Agents, and power. Scroll the sound chip to change volume.
+The top bar is Quickshell (`/usr/share/borked/quickshell/shell.qml`). COSMIC's panel process still starts, and its system entries list keeps the dock, so the top edge is free. The user unit is `borked-quickshell.service`. The bar floats as three pills: the name, the clock, and status icons for sound, Bluetooth, network, battery on a laptop, the system tray, Agents, and power. The status icons open one control center. Scroll the sound icon to change volume. Right-click it to mute.
 
 `sudo ./convert.sh` turns a Fedora COSMIC install of this release into Borked. Files stay. The name, the wallpaper, the repos, and the daily apps change. `--check` only looks. `--yes` skips the question. It will refuse the wrong Fedora release, a machine without COSMIC, and SELinux disabled. The lines are snark. The reason it stopped is still in the line.
