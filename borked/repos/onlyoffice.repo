@@ -1,0 +1,9 @@
+[onlyoffice]
+name=ONLYOFFICE
+baseurl=https://download.onlyoffice.com/repo/centos/main/noarch/
+enabled=1
+gpgcheck=1
+repo_gpgcheck=0
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-ONLYOFFICE
+priority=110
+skip_if_unavailable=0

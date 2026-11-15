@@ -1,0 +1,10 @@
+[claude-code]
+name=Claude Code
+baseurl=https://downloads.claude.ai/claude-code/rpm/stable
+type=rpm-md
+enabled=1
+gpgcheck=1
+repo_gpgcheck=0
+gpgkey=https://downloads.claude.ai/keys/claude-code.asc
+priority=110
+skip_if_unavailable=0

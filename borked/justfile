@@ -1,0 +1,41 @@
+set shell := ["bash", "-eu", "-o", "pipefail", "-c"]
+
+release := `cat release/fedora`
+
+default:
+    @just --list
+
+# Pinned Fedora release.
+version:
+    @echo {{release}}
+
+# Solve the package lists into packages/lock.
+lock:
+    cd "{{justfile_directory()}}" && ./image/podman-run.sh ./image/lock.sh
+
+# Build the golden btrfs send stream.
+root: lock
+    cd "{{justfile_directory()}}" && ./image/podman-run.sh --privileged ./image/build-root.sh
+
+# Build the hybrid installer ISO.
+iso: root
+    cd "{{justfile_directory()}}" && ./image/podman-run.sh ./iso/build-iso.sh
+
+# Unpack the stream onto a raw disk and boot it.
+qemu: root
+    cd "{{justfile_directory()}}" && ./image/qemu.sh
+
+# Unattended ISO install in qemu, then boot and self-check.
+test: iso
+    cd "{{justfile_directory()}}" && python3 ci/test-install.py
+
+# Turn this Fedora COSMIC machine into Borked. Files stay. The name does not.
+convert:
+    cd "{{justfile_directory()}}" && ./convert.sh
+
+# Exclude-list failure test and a syntax check. Does not boot a VM.
+check:
+    cd "{{justfile_directory()}}" && ./image/podman-run.sh ./ci/test-exclude.sh
+    cd "{{justfile_directory()}}" && python3 ci/test-apps.py
+    cd "{{justfile_directory()}}" && python3 -m compileall -q installer ci apps
+    cd "{{justfile_directory()}}" && bash -n image/podman-run.sh image/lock.sh image/build-rpms.sh image/build-root.sh image/qemu.sh iso/build-iso.sh iso/live-init ci/test-exclude.sh convert.sh

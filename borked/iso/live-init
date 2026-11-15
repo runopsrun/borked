@@ -1,0 +1,139 @@
+#!/bin/bash
+# PID 1 for the installer ISO. The initramfs is the whole live userspace.
+set -euo pipefail
+
+export PATH=/usr/sbin:/usr/bin:/sbin:/bin
+mkdir -p /proc /sys /dev /run /tmp /mnt /run/iso
+# util-linux mount follows this symlink and fails before proc exists.
+rm -f /etc/mtab
+mount -n -t proc proc /proc
+mount -n -t sysfs sys /sys
+mount -n -t devtmpfs dev /dev
+# devtmpfs replaces /dev, so the pts directory has to be created after that.
+mkdir -p /dev/pts
+mount -n -t devpts devpts /dev/pts
+
+# The screen is the controlling console. Copy the same stream to the serial
+# port so the qemu test can see it. devtmpfs has no /dev/fd, so use a fifo.
+if [[ -c /dev/tty0 ]]; then
+    exec </dev/tty0
+fi
+consoles=()
+[[ -c /dev/tty0 ]] && consoles+=(/dev/tty0)
+[[ -c /dev/ttyS0 ]] && consoles+=(/dev/ttyS0)
+if ((${#consoles[@]} > 1)); then
+    mkfifo /run/borked-console
+    tee "${consoles[@]}" </run/borked-console >/dev/null &
+    exec >/run/borked-console 2>&1
+elif ((${#consoles[@]} == 1)); then
+    exec >"${consoles[0]}" 2>&1
+fi
+
+splash() {
+    # Ten stops, dark on the left and pale on the right. Slot 9 is the
+    # brand pink. These SGR codes name the slot directly. An extra bold
+    # would move the normal slots onto the bright ones.
+    local cols=80
+    local rows=0
+    if [[ -c /dev/tty0 ]] && read -r rows cols < <(stty size </dev/tty0 2>/dev/null); then
+        :
+    fi
+    [[ "${cols:-}" =~ ^[0-9]+$ ]] || cols=80
+    printf '\033]P00b0a12\033]P1ff5a96\033]P2b01058\033]P3d8266c\033]P42a2540'
+    printf '\033]P5ff78aa\033]P6ffb3d3\033]P7f4f0ff\033]P89a93b5\033]P9ff3d81'
+    printf '\033]PAc41b62\033]PBeb3277\033]PDff95bf\033]PEffd0e8'
+    printf '\033%%G\033[40m\033[37m\033[2J\033[H\033[?25l'
+    local -a lines=(
+        '█▀█ █▀█ █▀█ █▄▀ █▀▀ █▀▄'
+        '█▀█ █ █ ██▄ █▀▄ ███ █ █'
+        '█▄█ █▄█ █ █ █ █ █▄▄ █▄▀'
+    )
+    local -a ansi=(32 92 33 93 91 31 35 95 36 96)
+    local line i ch step pad
+    local LC_ALL=C.UTF-8
+    for line in "${lines[@]}"; do
+        pad=$(( (cols - 23) / 2 ))
+        if (( pad < 0 )); then
+            pad=0
+        fi
+        printf '%*s' "$pad" ''
+        for (( i = 0; i < 23; i++ )); do
+            ch="${line:i:1}"
+            step=$(( i * 10 / 23 ))
+            printf '\033[%sm%s' "${ansi[step]}" "$ch"
+        done
+        printf '\033[0;37m\n'
+    done
+    local tag="Beautifully broken."
+    pad=$(( (cols - ${#tag}) / 2 ))
+    if (( pad < 0 )); then
+        pad=0
+    fi
+    printf '%*s%s\n\n' "$pad" '' "$tag"
+    pad=$(( (cols - ${#1}) / 2 ))
+    if (( pad < 0 )); then
+        pad=0
+    fi
+    printf '%*s%s\n' "$pad" '' "$1"
+}
+
+for font in \
+    /usr/lib/kbd/consolefonts/latarcyrheb-sun16.psfu.gz \
+    /usr/lib/kbd/consolefonts/LatArCyrHeb-16.psfu.gz \
+    /lib/kbd/consolefonts/latarcyrheb-sun16.psfu.gz
+do
+    if [[ -f "$font" ]]; then
+        setfont "$font" || true
+        break
+    fi
+done
+splash "Breaking it in."
+
+modprobe virtio_pci || true
+modprobe virtio_blk || true
+modprobe virtio_scsi || true
+modprobe iso9660 || true
+modprobe btrfs || true
+
+if [[ -x /usr/lib/systemd/systemd-udevd ]]; then
+    /usr/lib/systemd/systemd-udevd --daemon >/dev/null 2>&1 || true
+    udevadm trigger --action=add >/dev/null 2>&1 || true
+    udevadm settle --timeout=15 >/dev/null 2>&1 || true
+fi
+
+mounted=0
+for _ in $(seq 1 30); do
+    dev="$(blkid -L BORKED_ISO || true)"
+    if [[ -n "$dev" ]]; then
+        mount -n -o ro "$dev" /run/iso && mounted=1 && break
+    fi
+    sleep 1
+done
+if [[ "$mounted" -ne 1 || ! -f /run/iso/borked-root.btrfs.zst ]]; then
+    echo "borked installer: ISO stream missing" >&2
+    sleep 20
+    poweroff -f || true
+    exit 1
+fi
+
+export BORKED_STREAM=/run/iso/borked-root.btrfs.zst
+export PYTHONPATH=/usr/share/borked/installer
+export TERM=linux
+splash "Probably ready."
+printf '\033[?25h'
+# This shell is PID 1. If it exits, the kernel panics even when the
+# installer returned success.
+set +e
+python3 -m borked_install
+status=$?
+set -e
+echo
+if [[ "$status" -eq 0 ]]; then
+    sync
+    reboot -f || true
+else
+    echo "Installer stopped (${status})."
+fi
+while true; do
+    sleep 3600
+done

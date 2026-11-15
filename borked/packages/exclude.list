@@ -1,0 +1,6 @@
+# Names that must not appear in the solved transaction, even as dependencies.
+# Globs are allowed. A hit fails the solve and names the package that pulled it in.
+# Fixture: the skeleton does not need a web server.
+nginx
+# These own /usr/lib/os-release. borked-release provides fedora-release-identity.
+fedora-release-identity-*

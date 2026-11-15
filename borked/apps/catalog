@@ -1,0 +1,22 @@
+# Optional software. One app per line. The base image does not install these.
+#
+# category | id | label | blurb | kind | target | check
+#
+# kind:
+#   dnf        target is package names
+#   dnf-repo   first word is the repo file in repos/<name>.repo, then packages
+#   script     target is the vendor installer URL, run as the user
+#   github-rpm target is owner/repo/filename-glob from the latest release
+#   virt       package names, then libvirtd and the libvirt group
+#
+# check is the rpm name, or the command the script puts on PATH.
+# Add a line. A new category name starts a new section.
+
+Coding agents | codex | Codex | OpenAI's terminal agent. | script | https://chatgpt.com/codex/install.sh | codex
+Coding agents | claude | Claude | Anthropic's terminal agent. | dnf-repo | claude-code claude-code | claude-code
+Coding agents | antigravity | Antigravity | Google's terminal agent. The IDE has no signed package. | script | https://antigravity.google/cli/install.sh | agy
+Coding agents | opencode | OpenCode | Terminal coding agent. | script | https://opencode.ai/v2/install | opencode
+Editors | vscode | VS Code | Microsoft's editor. | dnf-repo | vscode code | code
+Editors | cursor | Cursor | The other editor. | dnf-repo | cursor cursor | cursor
+Communication | rambox | Rambox | Pro is the account you sign into. | github-rpm | ramboxapp/download/Rambox-*-linux-x64.rpm | rambox
+Virtual machines | virt | virt-manager and KVM | libvirt, QEMU, and the manager. Log out once so the group applies. | virt | virt-manager qemu-kvm libvirt-daemon-kvm virt-install | virt-manager

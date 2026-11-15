@@ -1,0 +1,23 @@
+# Live installer userspace. The golden desktop is not in this list.
+bash
+coreutils
+util-linux
+kbd
+kmod
+systemd
+python3
+btrfs-progs
+cryptsetup
+dosfstools
+kernel
+kernel-modules
+zstd
+findutils
+grep
+sed
+gawk
+tzdata
+xz
+gzip
+tar
+filesystem
