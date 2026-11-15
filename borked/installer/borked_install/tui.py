@@ -43,12 +43,29 @@ KEYBOARDS = (
 USER_RE = re.compile(r"[a-z_][a-z0-9_-]{0,31}")
 HOST_RE = re.compile(r"[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?")
 
-# Two rows, wide enough to read on an 80-column console.
+# Three rows. A two-row B has no top or bottom bar, so the word reads as DORKED.
 LOGO = (
-    # B is █▄█/█▀█. The D shape (█▀▄/█▄▀) made the word read as DORKED.
-    "█▄█ █▀█ █▀█ █▄▀ █▀▀ █▀▄",
-    "█▀█ █▄█ █▀▄ █ █ ██▄ █▄▀",
+    "█▀█ █▀█ █▀█ █▄▀ █▀▀ █▀▄",
+    "█▀█ █ █ ██▄ █▀▄ ███ █ █",
+    "█▄█ █▄█ █ █ █ █ █▄▄ █▄▀",
 )
+
+# Left to right. On the Linux console, bold selects the bright half of
+# the palette, so the ramp alternates a normal slot and its bright twin.
+# The brand pink is the bright red, which is also the menu accent.
+LOGO_RAMP = (
+    (curses.COLOR_GREEN, False, 0xB0, 0x10, 0x58),
+    (curses.COLOR_GREEN, True, 0xC4, 0x1B, 0x62),
+    (curses.COLOR_YELLOW, False, 0xD8, 0x26, 0x6C),
+    (curses.COLOR_YELLOW, True, 0xEB, 0x32, 0x77),
+    (curses.COLOR_RED, True, 0xFF, 0x3D, 0x81),
+    (curses.COLOR_RED, False, 0xFF, 0x5A, 0x96),
+    (curses.COLOR_MAGENTA, False, 0xFF, 0x78, 0xAA),
+    (curses.COLOR_MAGENTA, True, 0xFF, 0x95, 0xBF),
+    (curses.COLOR_CYAN, False, 0xFF, 0xB3, 0xD3),
+    (curses.COLOR_CYAN, True, 0xFF, 0xD0, 0xE8),
+)
+_LOGO_ATTRS: list[int] = []
 
 # Title, then the line under it. The welcome screen uses the first pair.
 COPY = (
@@ -178,6 +195,7 @@ class Installer:
         curses.init_pair(1, curses.COLOR_RED, bg)
         curses.init_pair(2, curses.COLOR_WHITE, bg)
         curses.init_pair(3, curses.COLOR_WHITE, curses.COLOR_BLUE)
+        _logo_pairs(bg)
         self.accent = curses.color_pair(1) | curses.A_BOLD
         self.dim = curses.A_DIM
         self.body = curses.color_pair(2)
@@ -434,14 +452,51 @@ def _origin(win) -> tuple[int, int]:
     return max(1, (width - panel) // 2), panel
 
 
-def _frame(win, title: str, snark: str, accent: int, dim: int, body: int) -> int:
-    x, _panel = _origin(win)
-    y = 1
+def _logo_pairs(bg: int) -> None:
+    global _LOGO_ATTRS
+    _LOGO_ATTRS = []
+    if curses.COLORS >= 256 and curses.can_change_color():
+        try:
+            for n, (_color, _bold, red, green, blue) in enumerate(LOGO_RAMP):
+                curses.init_color(
+                    16 + n, red * 1000 // 255, green * 1000 // 255, blue * 1000 // 255
+                )
+                curses.init_pair(10 + n, 16 + n, bg)
+                _LOGO_ATTRS.append(curses.color_pair(10 + n))
+            return
+        except curses.error:
+            _LOGO_ATTRS = []
+    if curses.COLORS >= 256:
+        cube = (125, 161, 162, 198, 204, 205, 211, 212, 218, 224)
+        for n, color in enumerate(cube):
+            curses.init_pair(10 + n, color, bg)
+            _LOGO_ATTRS.append(curses.color_pair(10 + n))
+        return
+    for n, (color, bold, _red, _green, _blue) in enumerate(LOGO_RAMP):
+        curses.init_pair(10 + n, color, bg)
+        attr = curses.color_pair(10 + n)
+        if bold:
+            attr |= curses.A_BOLD
+        _LOGO_ATTRS.append(attr)
+
+
+def _paint_logo(win, dim: int) -> int:
+    _height, width = win.getmaxyx()
+    spans = len(_LOGO_ATTRS)
+    y = 0
     for line in LOGO:
-        _add(win, y, x, line, accent | curses.A_BOLD)
+        x = max(0, (width - len(line)) // 2)
+        for i, ch in enumerate(line):
+            attr = _LOGO_ATTRS[i * spans // len(line)] if spans else 0
+            _add(win, y, x + i, ch, attr)
         y += 1
-    _add(win, y, x, "Beautifully broken.", dim)
-    y += 2
+    _center(win, y, "Beautifully broken.", dim)
+    return y + 1
+
+
+def _frame(win, title: str, snark: str, _accent: int, dim: int, body: int) -> int:
+    y = _paint_logo(win, dim) + 1
+    x, _panel = _origin(win)
     if title and title != "Beautifully broken.":
         _add(win, y, x, title, body | curses.A_BOLD)
         y += 1
@@ -450,14 +505,23 @@ def _frame(win, title: str, snark: str, accent: int, dim: int, body: int) -> int
 
 
 def _paint_palette() -> None:
-    # The Linux console only has 16 colors. Match the site: near-black
-    # field, pink mark, light text, and a quiet surface for the selection.
+    # The Linux console only has 16 colors. Slot 9 is the brand pink and
+    # the bright red the menus use. The other pinks are the wordmark ramp.
     colors = {
         "0": "0b0a12",
-        "1": "ff3d81",
+        "1": "ff5a96",
+        "2": "b01058",
+        "3": "d8266c",
         "4": "2a2540",
+        "5": "ff78aa",
+        "6": "ffb3d3",
         "7": "f4f0ff",
         "8": "9a93b5",
+        "9": "ff3d81",
+        "A": "c41b62",
+        "B": "eb3277",
+        "D": "ff95bf",
+        "E": "ffd0e8",
     }
     seq = "".join(f"\033]P{key}{value}" for key, value in colors.items())
     try:
@@ -511,6 +575,7 @@ def _present(stdscr, cfg: Config) -> None:
     curses.init_pair(1, curses.COLOR_RED, bg)
     curses.init_pair(2, curses.COLOR_WHITE, bg)
     curses.init_pair(3, curses.COLOR_WHITE, curses.COLOR_BLUE)
+    _logo_pairs(bg)
     accent = curses.color_pair(1) | curses.A_BOLD
     status = {"line": "Preparing the disk"}
 

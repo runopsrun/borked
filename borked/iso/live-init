@@ -30,12 +30,51 @@ elif ((${#consoles[@]} == 1)); then
 fi
 
 splash() {
-    printf '\033]P00b0a12\033]P1ff3d81\033]P42a2540\033]P7f4f0ff\033]P89a93b5'
-    printf '\033%%G\033[40m\033[37m\033[2J\033[H\033[?25l\n\n'
-    printf '  \033[1;31m█▄█ █▀█ █▀█ █▄▀ █▀▀ █▀▄\033[0;37m\n'
-    printf '  \033[1;31m█▀█ █▄█ █▀▄ █ █ ██▄ █▄▀\033[0;37m\n'
-    printf '  Beautifully broken.\n\n'
-    printf '  %s\n' "$1"
+    # Ten stops, dark on the left and pale on the right. Slot 9 is the
+    # brand pink. These SGR codes name the slot directly. An extra bold
+    # would move the normal slots onto the bright ones.
+    local cols=80
+    local rows=0
+    if [[ -c /dev/tty0 ]] && read -r rows cols < <(stty size </dev/tty0 2>/dev/null); then
+        :
+    fi
+    [[ "${cols:-}" =~ ^[0-9]+$ ]] || cols=80
+    printf '\033]P00b0a12\033]P1ff5a96\033]P2b01058\033]P3d8266c\033]P42a2540'
+    printf '\033]P5ff78aa\033]P6ffb3d3\033]P7f4f0ff\033]P89a93b5\033]P9ff3d81'
+    printf '\033]PAc41b62\033]PBeb3277\033]PDff95bf\033]PEffd0e8'
+    printf '\033%%G\033[40m\033[37m\033[2J\033[H\033[?25l'
+    local -a lines=(
+        '█▀█ █▀█ █▀█ █▄▀ █▀▀ █▀▄'
+        '█▀█ █ █ ██▄ █▀▄ ███ █ █'
+        '█▄█ █▄█ █ █ █ █ █▄▄ █▄▀'
+    )
+    local -a ansi=(32 92 33 93 91 31 35 95 36 96)
+    local line i ch step pad
+    local LC_ALL=C.UTF-8
+    for line in "${lines[@]}"; do
+        pad=$(( (cols - 23) / 2 ))
+        if (( pad < 0 )); then
+            pad=0
+        fi
+        printf '%*s' "$pad" ''
+        for (( i = 0; i < 23; i++ )); do
+            ch="${line:i:1}"
+            step=$(( i * 10 / 23 ))
+            printf '\033[%sm%s' "${ansi[step]}" "$ch"
+        done
+        printf '\033[0;37m\n'
+    done
+    local tag="Beautifully broken."
+    pad=$(( (cols - ${#tag}) / 2 ))
+    if (( pad < 0 )); then
+        pad=0
+    fi
+    printf '%*s%s\n\n' "$pad" '' "$tag"
+    pad=$(( (cols - ${#1}) / 2 ))
+    if (( pad < 0 )); then
+        pad=0
+    fi
+    printf '%*s%s\n' "$pad" '' "$1"
 }
 
 for font in \

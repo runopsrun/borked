@@ -1,6 +1,6 @@
 # Borked
 
-A mutable Fedora remix with the COSMIC desktop. `PLAN.md` is the build contract. `AGENTS.md` is the memory for coding agents, including the decisions made after that contract. The displayed name is Borked.
+A mutable Fedora remix with the COSMIC desktop. `PLAN.md` is the build contract. `AGENTS.md` is the memory for coding agents, including the decisions made after that contract. The displayed name is Borked. The console wordmark is three lines, centered at the top of the live splash, the installer, and `borked apps`. The B has two bowls, and the letters fade from a deep raspberry to a pale pink.
 
 The host needs podman, qemu, OVMF, `just`, and passwordless sudo for the rootful image build. The build itself runs in `quay.io/fedora/fedora` at the release pinned in `release/fedora`.
 

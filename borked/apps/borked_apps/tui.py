@@ -10,9 +10,25 @@ from borked_apps.install import InstallError, install, is_installed
 from borked_apps.voice import ALREADY, DONE, EMPTY, FAIL, MARK, MIXED, OK, START, UNMARK, WORKING, say
 
 LOGO = (
-    "█▄█ █▀█ █▀█ █▄▀ █▀▀ █▀▄",
-    "█▀█ █▄█ █▀▄ █ █ ██▄ █▄▀",
+    "█▀█ █▀█ █▀█ █▄▀ █▀▀ █▀▄",
+    "█▀█ █ █ ██▄ █▀▄ ███ █ █",
+    "█▄█ █▄█ █ █ █ █ █▄▄ █▄▀",
 )
+
+# Same ramp as the installer. Bold selects the bright console slot.
+LOGO_RAMP = (
+    (curses.COLOR_GREEN, False, 0xB0, 0x10, 0x58),
+    (curses.COLOR_GREEN, True, 0xC4, 0x1B, 0x62),
+    (curses.COLOR_YELLOW, False, 0xD8, 0x26, 0x6C),
+    (curses.COLOR_YELLOW, True, 0xEB, 0x32, 0x77),
+    (curses.COLOR_RED, True, 0xFF, 0x3D, 0x81),
+    (curses.COLOR_RED, False, 0xFF, 0x5A, 0x96),
+    (curses.COLOR_MAGENTA, False, 0xFF, 0x78, 0xAA),
+    (curses.COLOR_MAGENTA, True, 0xFF, 0x95, 0xBF),
+    (curses.COLOR_CYAN, False, 0xFF, 0xB3, 0xD3),
+    (curses.COLOR_CYAN, True, 0xFF, 0xD0, 0xE8),
+)
+_LOGO_ATTRS: list[int] = []
 
 
 def _add(win, y: int, x: int, text: str, attr: int = 0) -> None:
@@ -51,6 +67,7 @@ class Picker:
         curses.init_pair(1, curses.COLOR_RED, bg)
         curses.init_pair(2, curses.COLOR_WHITE, bg)
         curses.init_pair(3, curses.COLOR_WHITE, curses.COLOR_BLUE)
+        _logo_pairs(bg)
         self.accent = curses.color_pair(1) | curses.A_BOLD
         self.body = curses.color_pair(2)
         self.mark = curses.color_pair(3) | curses.A_BOLD
@@ -95,12 +112,7 @@ class Picker:
             win.refresh()
             return
         x, panel = _origin(win)
-        y = 1
-        for line in LOGO:
-            _add(win, y, x, line, self.accent)
-            y += 1
-        _add(win, y, x, "Beautifully broken.", self.dim)
-        y += 2
+        y = _paint_logo(win, self.dim) + 1
         _add(win, y, x, "Apps.", self.body | curses.A_BOLD)
         y += 1
         _add(win, y, x, "Optional. The base image stays boring.", self.dim)
@@ -138,13 +150,79 @@ class Picker:
         return rows
 
 
-def pick(apps: list[App]) -> list[App] | None:
-    if os.environ.get("TERM") == "linux":
+def _logo_pairs(bg: int) -> None:
+    global _LOGO_ATTRS
+    _LOGO_ATTRS = []
+    if curses.COLORS >= 256 and curses.can_change_color():
         try:
-            os.write(1, b"\033]P00b0a12\033]P1ff3d81\033]P42a2540\033]P7f4f0ff\033]P89a93b5")
-        except OSError:
-            pass
-    return curses.wrapper(lambda stdscr: Picker(apps).run(stdscr))
+            for n, (_color, _bold, red, green, blue) in enumerate(LOGO_RAMP):
+                curses.init_color(
+                    16 + n, red * 1000 // 255, green * 1000 // 255, blue * 1000 // 255
+                )
+                curses.init_pair(10 + n, 16 + n, bg)
+                _LOGO_ATTRS.append(curses.color_pair(10 + n))
+            return
+        except curses.error:
+            _LOGO_ATTRS = []
+    if curses.COLORS >= 256:
+        cube = (125, 161, 162, 198, 204, 205, 211, 212, 218, 224)
+        for n, color in enumerate(cube):
+            curses.init_pair(10 + n, color, bg)
+            _LOGO_ATTRS.append(curses.color_pair(10 + n))
+        return
+    for n, (color, bold, _red, _green, _blue) in enumerate(LOGO_RAMP):
+        curses.init_pair(10 + n, color, bg)
+        attr = curses.color_pair(10 + n)
+        if bold:
+            attr |= curses.A_BOLD
+        _LOGO_ATTRS.append(attr)
+
+
+def _paint_logo(win, dim: int) -> int:
+    _height, width = win.getmaxyx()
+    spans = len(_LOGO_ATTRS)
+    y = 0
+    for line in LOGO:
+        x = max(0, (width - len(line)) // 2)
+        for i, ch in enumerate(line):
+            attr = _LOGO_ATTRS[i * spans // len(line)] if spans else 0
+            _add(win, y, x + i, ch, attr)
+        y += 1
+    tag = "Beautifully broken."
+    _add(win, y, max(0, (width - len(tag)) // 2), tag, dim)
+    return y + 1
+
+
+def _console_palette() -> None:
+    if os.environ.get("TERM") != "linux":
+        return
+    seq = (
+        "\033]P00b0a12\033]P1ff5a96\033]P2b01058\033]P3d8266c\033]P42a2540"
+        "\033]P5ff78aa\033]P6ffb3d3\033]P7f4f0ff\033]P89a93b5\033]P9ff3d81"
+        "\033]PAc41b62\033]PBeb3277\033]PDff95bf\033]PEffd0e8"
+    )
+    try:
+        os.write(1, seq.encode())
+    except OSError:
+        return
+
+
+def _restore_logo_colors() -> None:
+    # init_color rewrites cube slots for the life of the terminal.
+    seq = "".join(f"\033]104;{16 + n}\033\\" for n in range(len(LOGO_RAMP)))
+    try:
+        os.write(1, seq.encode())
+    except OSError:
+        return
+
+
+def pick(apps: list[App]) -> list[App] | None:
+    _console_palette()
+    try:
+        return curses.wrapper(lambda stdscr: Picker(apps).run(stdscr))
+    finally:
+        if os.environ.get("TERM") != "linux":
+            _restore_logo_colors()
 
 
 def run_install(chosen: list[App]) -> int:

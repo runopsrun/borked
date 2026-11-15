@@ -1,6 +1,6 @@
 Name:           borked-apps
 Version:        1
-Release:        2%{?dist}
+Release:        4%{?dist}
 Summary:        Borked optional software picker
 License:        MIT
 URL:            https://projectborked.com
@@ -37,6 +37,10 @@ install -m 0644 %{buildroot}/usr/share/borked/apps/borked-apps.desktop \
 /usr/share/applications/borked-apps.desktop
 
 %changelog
+* Mon Nov 09 2026 Borked <dev@borked.invalid> - 1-4
+- The wordmark is centered and fades from raspberry to pale pink.
+* Mon Nov 09 2026 Borked <dev@borked.invalid> - 1-3
+- The wordmark is three lines so the B has two bowls.
 * Sat Nov 07 2026 Borked <dev@borked.invalid> - 1-2
 - The command is borked. apps is the first subcommand.
 * Sat Nov 07 2026 Borked <dev@borked.invalid> - 1-1
