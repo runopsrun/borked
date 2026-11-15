@@ -2,3 +2,20 @@ out/
 __pycache__/
 *.pyc
 .tools/
+
+# Local credentials and signing material. Public repo keys stay tracked.
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.pfx
+private-keys-v1.d/
+
+# Build and VM artifacts belong under out/.
+*.iso
+*.qcow2
+*.raw
+*.rpm
+*.btrfs.zst

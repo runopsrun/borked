@@ -4,14 +4,23 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   exclude:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: borked
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Install podman and just
         run: |
           sudo apt-get update
           sudo apt-get install -y podman just python3
-      - name: Negative exclude test
+      - name: Negative exclude test and source checks
         run: just check

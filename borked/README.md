@@ -20,6 +20,12 @@ Dev builds set `VARIANT=Development`, generate a throwaway signing key under `ou
 
 On an installed system, `borked` is the command and `borked apps` installs optional software. Those apps are lines in `apps/catalog`, not packages in the base image.
 
+Optional apps marked `script` download the vendor's current installer over HTTPS and run it as your user. These scripts and their downstream downloads are not pinned or verified by Borked. Installing one trusts the vendor with your account. RPM repository installs keep GPG checking enabled.
+
+GitHub runs `just check` from `borked/` using the workflow at the repository root. That checks the exclude list, app catalog, and syntax; it does not validate a booted image. Run `just qemu` or `just test` for that.
+
+Borked's original source is MIT licensed; see [LICENSE](../LICENSE). Bundled fonts retain their accompanying SIL Open Font Licenses. Upstream packages retain their own licenses.
+
 The image enables two system Flatpak remotes. Flathub is the full remote at `https://dl.flathub.org/repo/`. The COSMIC remote is `https://apt.pop-os.org/cosmic/`. Both `.flatpakrepo` files live in `repos/` and carry their signing keys. `convert.sh` adds the same two remotes.
 
 The top bar is Quickshell (`/usr/share/borked/quickshell/shell.qml`). COSMIC's panel process still starts, and its system entries list keeps the dock, so the top edge is free. The user unit is `borked-quickshell.service`. The bar floats as three pills: the name, the clock, and status icons for sound, Bluetooth, network, battery on a laptop, the system tray, Agents, and power. The status icons open one control center. Scroll the sound icon to change volume. Right-click it to mute.
