@@ -77,6 +77,7 @@ USAGE = """Borked. Beautifully broken.
 
   borked apps     optional software. hope you're sure.
   borked duo      write Duo Unix keys. optionally wire SSH.
+  borked kiwi     Cytrence Kiwi, in an Ubuntu distrobox.
 
 That's the list. It will get longer. Unfortunately.
 """
@@ -111,6 +112,27 @@ DUO_DONE = (
 DUO_SSH = (
     "SSH now runs through login_duo. Drop-in at {path}. Don't lose your phone.",
     "ForceCommand is live. Remove {path} if you want the old kind of broken.",
+)
+
+KIWI_USAGE = """borked kiwi — Cytrence Kiwi in an Ubuntu 24.04 distrobox.
+
+  borked kiwi
+  borked kiwi --yes
+  borked apps --install kiwi
+
+Fedora is not on their list. The box is named kiwi. The package prints
+the EULA and this answers yes. The zip's sha256 is checked. It is not
+a signature. Afterward, log out once so dialout applies to the serial device.
+"""
+
+KIWI_GROUP = (
+    "{user} is in dialout. Log out once so this session can open the serial device.",
+    "dialout is on the account. This login doesn't have it yet. Log out once.",
+)
+
+KIWI_DONE = (
+    "Cytrence Kiwi is in the {name} box. Launcher is {path}.",
+    "{path} starts Kiwi inside {name}. Plug the dongle in after you log back in.",
 )
 
 

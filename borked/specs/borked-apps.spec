@@ -1,6 +1,6 @@
 Name:           borked-apps
 Version:        1
-Release:        5%{?dist}
+Release:        7%{?dist}
 Summary:        Borked optional software picker
 License:        MIT
 URL:            https://projectborked.com
@@ -37,6 +37,10 @@ install -m 0644 %{buildroot}/usr/share/borked/apps/borked-apps.desktop \
 /usr/share/applications/borked-apps.desktop
 
 %changelog
+* Fri Nov 27 2026 Borked <dev@borked.invalid> - 1-7
+- Optional installs for scrcpy, T3 Code, Moonlight, Sunshine, SolidCraft, ArtCraft, OrcaSlicer, PrusaSlicer, and Hermes.
+* Fri Nov 27 2026 Borked <dev@borked.invalid> - 1-6
+- borked kiwi installs Cytrence Kiwi into an Ubuntu 24.04 distrobox.
 * Fri Nov 27 2026 Borked <dev@borked.invalid> - 1-5
 - borked duo configures Cisco Duo Unix after optional install.
 * Mon Nov 09 2026 Borked <dev@borked.invalid> - 1-4

@@ -6,6 +6,7 @@ import sys
 
 from borked_apps.catalog import load
 from borked_apps.duo import run as duo_run
+from borked_apps.kiwi import run as kiwi_run
 from borked_apps.tui import pick, run_install
 from borked_apps.voice import USAGE
 
@@ -20,7 +21,9 @@ def main(argv: list[str] | None = None) -> int:
         return _apps(rest)
     if command == "duo":
         return duo_run(rest)
-    print(f"borked: '{command}' is not a thing. Try `borked apps` or `borked duo`.")
+    if command == "kiwi":
+        return kiwi_run(rest)
+    print(f"borked: '{command}' is not a thing. Try `borked apps`, `borked duo`, or `borked kiwi`.")
     return 2
 
 

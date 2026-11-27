@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-KINDS = ("dnf", "dnf-repo", "script", "github-rpm", "virt")
+KINDS = ("dnf", "dnf-repo", "script", "github-rpm", "github-bundle", "virt", "distrobox")
 
 
 @dataclass(frozen=True)
@@ -58,6 +58,12 @@ def load(path: Path | None = None) -> list[App]:
             raise SystemExit(f"{catalog}:{lineno}: missing or repeated id")
         if app.kind == "dnf-repo" and len(app.target.split()) < 2:
             raise SystemExit(f"{catalog}:{lineno}: dnf-repo needs a repo name and a package")
+        if app.kind == "distrobox":
+            image, _, name = app.target.partition(" ")
+            if not name or " " in name or ":" not in image:
+                raise SystemExit(f"{catalog}:{lineno}: distrobox needs an image and a container name")
+        if app.kind in ("github-rpm", "github-bundle") and app.target.count("/") < 2:
+            raise SystemExit(f"{catalog}:{lineno}: {app.kind} needs owner/repo/glob")
         seen.add(app.id)
         apps.append(app)
     if not apps:
