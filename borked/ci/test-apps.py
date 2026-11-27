@@ -17,8 +17,10 @@ class CatalogTest(unittest.TestCase):
         by_id = {app.id: app for app in apps}
         self.assertEqual(
             list(by_id),
-            ["codex", "claude", "antigravity", "opencode", "vscode", "cursor", "rambox", "virt"],
+            ["codex", "claude", "antigravity", "opencode", "vscode", "cursor", "rambox", "virt", "duo"],
         )
+        self.assertEqual(by_id["duo"].kind, "dnf")
+        self.assertEqual(by_id["duo"].packages(), ["duo_unix", "duo_unix-selinux"])
         self.assertEqual(by_id["claude"].repo_name(), "claude-code")
         self.assertEqual(by_id["claude"].packages(), ["claude-code"])
         self.assertEqual(by_id["vscode"].packages(), ["code"])
@@ -36,6 +38,7 @@ class CatalogTest(unittest.TestCase):
         self.assertEqual(main([]), 0)
         self.assertEqual(main(["nope"]), 2)
         self.assertEqual(main(["apps", "--list"]), 0)
+        self.assertEqual(main(["duo", "--help"]), 0)
         self.assertTrue(any("never mind" in line for line in OK))
 
 

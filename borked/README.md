@@ -18,7 +18,7 @@ just convert # this Fedora COSMIC machine becomes Borked
 
 Dev builds set `VARIANT=Development`, generate a throwaway signing key under `out/keys/`, and do not sign the ISO. There is no release key yet, so there is no release fingerprint to publish. Set `BORKED_VARIANT=COSMIC` and `BORKED_RELEASE_KEY` to a detached private key only when cutting a signed release. Never commit `out/`.
 
-On an installed system, `borked` is the command and `borked apps` installs optional software. Those apps are lines in `apps/catalog`, not packages in the base image.
+On an installed system, `borked` is the command and `borked apps` installs optional software. Those apps are lines in `apps/catalog`, not packages in the base image. Cisco Duo Unix is one of them: install it from the Security section, then run `borked duo` to write `/etc/duo/login_duo.conf` and optionally wire SSH through `login_duo`.
 
 Optional apps marked `script` download the vendor's current installer over HTTPS and run it as your user. These scripts and their downstream downloads are not pinned or verified by Borked. Installing one trusts the vendor with your account. RPM repository installs keep GPG checking enabled.
 

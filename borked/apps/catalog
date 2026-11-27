@@ -20,3 +20,4 @@ Editors | vscode | VS Code | Microsoft's editor. | dnf-repo | vscode code | code
 Editors | cursor | Cursor | The other editor. | dnf-repo | cursor cursor | cursor
 Communication | rambox | Rambox | Pro is the account you sign into. | github-rpm | ramboxapp/download/Rambox-*-linux-x64.rpm | rambox
 Virtual machines | virt | virt-manager and KVM | libvirt, QEMU, and the manager. Log out once so the group applies. | virt | virt-manager qemu-kvm libvirt-daemon-kvm virt-install | virt-manager
+Security | duo | Cisco Duo | Duo Unix for SSH. Run `borked duo` after install. | dnf | duo_unix duo_unix-selinux | duo_unix

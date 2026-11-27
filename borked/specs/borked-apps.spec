@@ -1,6 +1,6 @@
 Name:           borked-apps
 Version:        1
-Release:        4%{?dist}
+Release:        5%{?dist}
 Summary:        Borked optional software picker
 License:        MIT
 URL:            https://projectborked.com
@@ -37,6 +37,8 @@ install -m 0644 %{buildroot}/usr/share/borked/apps/borked-apps.desktop \
 /usr/share/applications/borked-apps.desktop
 
 %changelog
+* Fri Nov 27 2026 Borked <dev@borked.invalid> - 1-5
+- borked duo configures Cisco Duo Unix after optional install.
 * Mon Nov 09 2026 Borked <dev@borked.invalid> - 1-4
 - The wordmark is centered and fades from raspberry to pale pink.
 * Mon Nov 09 2026 Borked <dev@borked.invalid> - 1-3

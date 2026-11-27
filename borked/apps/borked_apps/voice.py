@@ -76,9 +76,42 @@ VIRT = (
 USAGE = """Borked. Beautifully broken.
 
   borked apps     optional software. hope you're sure.
+  borked duo      write Duo Unix keys. optionally wire SSH.
 
 That's the list. It will get longer. Unfortunately.
 """
+
+DUO_USAGE = """borked duo — Cisco Duo Unix after the packages land.
+
+  borked duo
+  borked duo --ikey=KEY --skey=SECRET --host=api-XXXX.duosecurity.com
+  borked duo --ssh
+  borked duo --failmode=secure
+
+Install with `borked apps` first if needed. Keys go in /etc/duo/login_duo.conf.
+`--ssh` drops ForceCommand into /etc/ssh/sshd_config.d/50-borked-duo.conf.
+failmode defaults to safe so a Duo outage does not lock you out. On purpose.
+"""
+
+DUO_MISS = (
+    "Duo Unix is not installed. Fixing that first. Emotionally prepared. Barely.",
+    "No duo_unix yet. Installing it so the secrets have somewhere to live.",
+)
+
+DUO_START = (
+    "Pulling Duo Unix from Fedora. Hope the admin panel is open.",
+    "Installing Duo. Your phone will hate you later.",
+)
+
+DUO_DONE = (
+    "Keys written to {path}. Mode 600. Don't screenshot that.",
+    "{path} has the secrets. Fail open until you say otherwise.",
+)
+
+DUO_SSH = (
+    "SSH now runs through login_duo. Drop-in at {path}. Don't lose your phone.",
+    "ForceCommand is live. Remove {path} if you want the old kind of broken.",
+)
 
 
 def say(lines: tuple[str, ...], **fmt: str) -> str:
