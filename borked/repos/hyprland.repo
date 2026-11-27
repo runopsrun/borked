@@ -1,0 +1,10 @@
+[hyprland]
+name=Hyprland (nett00n COPR)
+baseurl=https://download.copr.fedorainfracloud.org/results/nett00n/hyprland/fedora-$releasever-$basearch/
+type=rpm-md
+enabled=1
+gpgcheck=1
+repo_gpgcheck=0
+gpgkey=https://download.copr.fedorainfracloud.org/results/nett00n/hyprland/pubkey.gpg
+priority=110
+skip_if_unavailable=0

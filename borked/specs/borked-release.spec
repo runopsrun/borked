@@ -1,6 +1,6 @@
 Name:           borked-release
 Version:        1
-Release:        2%{?dist}
+Release:        3%{?dist}
 Summary:        Borked OS release identity
 License:        MIT
 URL:            https://borked.invalid
@@ -75,6 +75,8 @@ fi
 /etc/dnf/protected.d/borked.conf
 
 %changelog
+* Thu Nov 26 2026 Borked OS <dev@borked.invalid> - 1-3
+- The boot check requires both COSMIC and Hyprland session files.
 * Mon Nov 09 2026 Borked OS <dev@borked.invalid> - 1-2
 - The boot check looks for BlueZ, UPower, and bluetooth.service.
 * Fri Nov 06 2026 Borked OS <dev@borked.invalid> - 1-1

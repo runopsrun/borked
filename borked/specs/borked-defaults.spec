@@ -1,6 +1,6 @@
 Name:           borked-defaults
 Version:        1
-Release:        4%{?dist}
+Release:        6%{?dist}
 Summary:        Borked wallpaper, theme seed, and Quickshell bar
 License:        MIT
 URL:            https://borked.invalid
@@ -11,21 +11,27 @@ Source1:        accent_palette_dark
 Source2:        accent_palette_light
 Source3:        shell.qml
 Source4:        borked-quickshell.service
+Source5:        hyprland.conf
+Source6:        hyprpaper.conf
 
 %description
-Wallpaper, a COSMIC accent-palette seed, and the Quickshell top bar.
+Wallpaper, a COSMIC accent-palette seed, the Quickshell top bar, and
+Hyprland session defaults the installer copies for that desktop choice.
 The COSMIC panel list keeps the dock. Nothing is copied into /etc/skel.
 
 %install
 install -d -m 0755 %{buildroot}/usr/share/backgrounds/borked
 install -d -m 0755 %{buildroot}/usr/share/borked/cosmic
 install -d -m 0755 %{buildroot}/usr/share/borked/quickshell
+install -d -m 0755 %{buildroot}/usr/share/borked/hypr
 install -d -m 0755 %{buildroot}/usr/lib/systemd/user/cosmic-session.target.wants
 install -m 0644 %{SOURCE0} %{buildroot}/usr/share/backgrounds/borked/default.png
 install -m 0644 %{SOURCE1} %{buildroot}/usr/share/borked/cosmic/accent_palette_dark
 install -m 0644 %{SOURCE2} %{buildroot}/usr/share/borked/cosmic/accent_palette_light
 install -m 0644 %{SOURCE3} %{buildroot}/usr/share/borked/quickshell/shell.qml
 install -m 0644 %{SOURCE4} %{buildroot}/usr/lib/systemd/user/borked-quickshell.service
+install -m 0644 %{SOURCE5} %{buildroot}/usr/share/borked/hypr/hyprland.conf
+install -m 0644 %{SOURCE6} %{buildroot}/usr/share/borked/hypr/hyprpaper.conf
 ln -s ../borked-quickshell.service %{buildroot}/usr/lib/systemd/user/cosmic-session.target.wants/borked-quickshell.service
 
 %files
@@ -33,6 +39,8 @@ ln -s ../borked-quickshell.service %{buildroot}/usr/lib/systemd/user/cosmic-sess
 /usr/share/borked/cosmic/accent_palette_dark
 /usr/share/borked/cosmic/accent_palette_light
 /usr/share/borked/quickshell/shell.qml
+/usr/share/borked/hypr/hyprland.conf
+/usr/share/borked/hypr/hyprpaper.conf
 /usr/lib/systemd/user/borked-quickshell.service
 /usr/lib/systemd/user/cosmic-session.target.wants/borked-quickshell.service
 
@@ -43,6 +51,10 @@ if [ -f "$entries" ]; then
 fi
 
 %changelog
+* Thu Nov 26 2026 Borked OS <dev@borked.invalid> - 1-6
+- Ship Hyprland session defaults the installer can copy.
+* Sun Nov 15 2026 Borked OS <dev@borked.invalid> - 1-5
+- Point Quickshell at the Cosmic icon theme so status glyphs are not missing.
 * Mon Nov 09 2026 Borked OS <dev@borked.invalid> - 1-4
 - The bar floats, and the status icons share one control center.
 * Mon Nov 09 2026 Borked OS <dev@borked.invalid> - 1-3

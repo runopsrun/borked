@@ -1,6 +1,6 @@
 # Borked
 
-A mutable Fedora remix with the COSMIC desktop. `PLAN.md` is the build contract. `AGENTS.md` is the memory for coding agents, including the decisions made after that contract. The displayed name is Borked. The console wordmark is three lines, centered at the top of the live splash, the installer, and `borked apps`. The B has two bowls, and the letters fade from a deep raspberry to a pale pink.
+A mutable Fedora remix with the COSMIC desktop, and Hyprland as an installer session choice. `PLAN.md` is the build contract. `AGENTS.md` is the memory for coding agents, including the decisions made after that contract. The displayed name is Borked. The console wordmark is three lines, centered at the top of the live splash, the installer, and `borked apps`. The B has two bowls, and the letters fade from a deep raspberry to a pale pink.
 
 The host needs podman, qemu, OVMF, `just`, and passwordless sudo for the rootful image build. The build itself runs in `quay.io/fedora/fedora` at the release pinned in `release/fedora`.
 
@@ -28,6 +28,6 @@ Borked's original source is MIT licensed; see [LICENSE](../LICENSE). Bundled fon
 
 The image enables two system Flatpak remotes. Flathub is the full remote at `https://dl.flathub.org/repo/`. The COSMIC remote is `https://apt.pop-os.org/cosmic/`. Both `.flatpakrepo` files live in `repos/` and carry their signing keys. `convert.sh` adds the same two remotes.
 
-The top bar is Quickshell (`/usr/share/borked/quickshell/shell.qml`). COSMIC's panel process still starts, and its system entries list keeps the dock, so the top edge is free. The user unit is `borked-quickshell.service`. The bar floats as three pills: the name, the clock, and status icons for sound, Bluetooth, network, battery on a laptop, the system tray, Agents, and power. The status icons open one control center. Scroll the sound icon to change volume. Right-click it to mute.
+The top bar is Quickshell (`/usr/share/borked/quickshell/shell.qml`). COSMIC's panel process still starts, and its system entries list keeps the dock, so the top edge is free. The user unit is `borked-quickshell.service`. The bar points at the Cosmic icon theme so status glyphs resolve. It floats as three pills: the name, the clock, and status icons for sound, Bluetooth, network, battery on a laptop, the system tray, Agents, and power. The status icons open one control center. Scroll the sound icon to change volume. Right-click it to mute. That bar is for COSMIC. Hyprland gets Waybar from the same image, with defaults under `/usr/share/borked/hypr/`. The installer asks COSMIC or Hyprland and seeds `cosmic-greeter` so login opens the chosen session.
 
 `sudo ./convert.sh` turns a Fedora COSMIC install of this release into Borked. Files stay. The name, the wallpaper, the repos, and the daily apps change. `--check` only looks. `--yes` skips the question. It will refuse the wrong Fedora release, a machine without COSMIC, and SELinux disabled. The lines are snark. The reason it stopped is still in the line.

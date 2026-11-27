@@ -7,8 +7,8 @@ A Fedora remix with the COSMIC desktop, your package set, and an installer that 
 Ship a **mutable Fedora remix**, not an atomic/bootc image and not an Anaconda reskin.
 
 - **Base:** Fedora **45**. Confirmed 2026-11-06: the Fedora 45 metalink responds and `quay.io/fedora/fedora:45` exists. Consume Fedora repos with `gpgcheck=1`. Never re-sign or rehost Fedora RPMs.
-- **Desktop:** official `@cosmic-desktop`. Confirmed against Fedora 45 comps. The id is `cosmic-desktop`, not `cosmic-desktop-environment`. `cosmic-desktop-apps` is supplementary and is not part of the skeleton. Fedora already ships COSMIC and a [COSMIC spin](https://fedoraproject.org/spins/cosmic/).
-- **Greeter:** `cosmic-greeter.service` is the display manager. Its `ExecStart` is `greetd --config /etc/greetd/cosmic-greeter.toml`. `[Install]` aliases it to `display-manager.service`. Also enable `cosmic-greeter-daemon.service` (`WantedBy=multi-user.target`). The greeter unit `Wants=` the daemon.
+- **Desktop:** official `@cosmic-desktop` is always in the image. The installer also offers **Hyprland** as a session choice. Hyprland and a small stack (`waybar`, `wofi`, `hyprpaper`, `hyprlock`, `hypridle`, `xdg-desktop-portal-hyprland`) come from the `nett00n/hyprland` COPR (`repos/hyprland.repo`, `gpgcheck=1`, priority 110). Both sessions ship in one golden root; the installer seeds `cosmic-greeter`'s per-user `last_session` so login opens the chosen desktop. Confirmed against Fedora 45 comps: the group id is `cosmic-desktop`, not `cosmic-desktop-environment`. `cosmic-desktop-apps` is supplementary and is not part of the skeleton. Fedora already ships COSMIC and a [COSMIC spin](https://fedoraproject.org/spins/cosmic/). Hyprland itself is not in Fedora; do not vendor its RPMs.
+- **Greeter:** `cosmic-greeter.service` is the display manager for both desktops. Its `ExecStart` is `greetd --config /etc/greetd/cosmic-greeter.toml`. `[Install]` aliases it to `display-manager.service`. Also enable `cosmic-greeter-daemon.service` (`WantedBy=multi-user.target`). The greeter unit `Wants=` the daemon. Session `.desktop` files live under `/usr/share/wayland-sessions/` (`COSMIC`, `Hyprland`).
 - **Boot packages:** Fedora 45 names are `grub2-efi-x64` and `shim-x64`.
 - **Your packages:** a small Borked RPM repo (release metadata, repo file, defaults, anything Fedora does not ship the way you want). Higher priority than Fedora, only for packages you actually replace.
 - **Install speed:** at ISO build time, install the locked package set once into a btrfs subvolume. The ISO carries a `btrfs send` stream. The installer receives it onto the target disk, then does per-machine work only (user, hostname, bootloader, machine-id). Fedora’s generic `kernel` plus both microcode packages can live in the image, so there is no Arch-style per-CPU package delta.
@@ -55,7 +55,7 @@ Do not claim bit-for-bit reproducible RPMs. Claim this, and test it:
 
 Out of band: you hold the release key. Implementation must not generate a long-term private key into git. Document the fingerprint in the README once the key exists.
 
-Legal: this is a Fedora Remix. The name is Borked OS. Docs may say “based on Fedora.” Do not use the Fedora logo or imply Red Hat or System76 ship this. COSMIC is named as the desktop you ship.
+Legal: this is a Fedora Remix. The name is Borked OS. Docs may say “based on Fedora.” Do not use the Fedora logo or imply Red Hat or System76 ship this. COSMIC is the default desktop; Hyprland is an optional session from a third-party COPR.
 
 ## Repository layout
 
@@ -106,7 +106,7 @@ Local iteration does not need an ISO. `just qemu` writes the stream into a raw d
 
 Boots to a TUI on tty1. No Anaconda. Live userspace is only large enough to partition, decrypt, receive, and install the bootloader. Optional “try COSMIC” live session is out of v1 (it doubles the ISO and is not what makes Omarchy fast).
 
-Questions, in one pass: disk, optional LUKS passphrase, username, full name, password, hostname, timezone. Keyboard defaults to the console layout. A `cidata` volume with a JSON config skips the TUI for qemu and later automation (same idea as Omarchy’s unattended drive).
+Questions, in one pass: desktop (COSMIC or Hyprland), disk, optional LUKS passphrase, username, full name, password, hostname, timezone. Keyboard defaults to the console layout. A `cidata` volume with a JSON config skips the TUI for qemu and later automation (same idea as Omarchy’s unattended drive). Unattended configs may set `"desktop": "cosmic"` or `"desktop": "hyprland"`; default is `cosmic`.
 
 Default layout, UEFI:
 

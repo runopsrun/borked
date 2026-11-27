@@ -50,6 +50,8 @@ cp /src/branding/accent_palette_dark "$top/SOURCES/accent_palette_dark"
 cp /src/branding/accent_palette_light "$top/SOURCES/accent_palette_light"
 cp /src/branding/quickshell/shell.qml "$top/SOURCES/shell.qml"
 cp /src/branding/borked-quickshell.service "$top/SOURCES/borked-quickshell.service"
+cp /src/branding/hypr/hyprland.conf "$top/SOURCES/hyprland.conf"
+cp /src/branding/hypr/hyprpaper.conf "$top/SOURCES/hyprpaper.conf"
 cp /src/specs/*.spec "$top/SPECS/"
 tar -C /src/apps --exclude __pycache__ --exclude '*.pyc' -cf "$top/SOURCES/borked-apps.tar" .
 

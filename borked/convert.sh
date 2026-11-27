@@ -103,7 +103,8 @@ done
 for url in \
     https://brave-browser-rpm-release.s3.brave.com/brave-core.asc \
     https://download.copr.fedorainfracloud.org/results/rossetnocpes/herdr/pubkey.gpg \
-    https://download.copr.fedorainfracloud.org/results/che/zed/pubkey.gpg
+    https://download.copr.fedorainfracloud.org/results/che/zed/pubkey.gpg \
+    https://download.copr.fedorainfracloud.org/results/nett00n/hyprland/pubkey.gpg
 do
     curl -fsSL "$url" -o "$tmp"
     rpm --import "$tmp" || true

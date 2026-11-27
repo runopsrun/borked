@@ -11,6 +11,14 @@ from pathlib import Path
 
 
 
+# Session Name= from /usr/share/wayland-sessions/*.desktop
+DESKTOPS = ("cosmic", "hyprland")
+DESKTOP_SESSIONS = {
+    "cosmic": "COSMIC",
+    "hyprland": "Hyprland",
+}
+
+
 @dataclass
 class Config:
     disk: str
@@ -26,6 +34,7 @@ class Config:
     locale: str = "en_US.UTF-8"
     keymap: str = "us"
     xkb_layout: str = "us"
+    desktop: str = "cosmic"
 
 
 def _mount_label(label: str, target: str) -> bool:
@@ -81,6 +90,13 @@ def resolve_disk(disk: str) -> str:
     raise SystemExit(f"disk not found: {disk}")
 
 
+def _desktop(value: object) -> str:
+    name = str(value or "cosmic").strip().lower()
+    if name not in DESKTOPS:
+        raise SystemExit(f"desktop must be one of {', '.join(DESKTOPS)}")
+    return name
+
+
 def _from_mapping(data: dict, stream: str | None) -> Config:
     passphrase = data.get("luks_passphrase") or None
     return Config(
@@ -97,6 +113,7 @@ def _from_mapping(data: dict, stream: str | None) -> Config:
         locale=str(data.get("locale") or "en_US.UTF-8"),
         keymap=str(data.get("keymap") or "us"),
         xkb_layout=str(data.get("xkb_layout") or "us"),
+        desktop=_desktop(data.get("desktop")),
     )
 
 

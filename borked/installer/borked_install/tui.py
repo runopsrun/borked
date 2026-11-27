@@ -9,7 +9,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from borked_install.config import Config, resolve_disk
+from borked_install.config import DESKTOPS, Config, resolve_disk
 
 # English is the locale pack shipped in the image. More choices need a
 # glibc-langpack-* entry in packages/include.list.
@@ -70,6 +70,7 @@ _LOGO_ATTRS: list[int] = []
 # Title, then the line under it. The welcome screen uses the first pair.
 COPY = (
     ("Beautifully broken.", "Stop ricing. Start using it. Probably."),
+    ("Desktop", "COSMIC is the default. Hyprland is the other door."),
     ("Keyboard", "The layout you'll blame later."),
     ("Language", "English. The rest can wait."),
     ("Account", "A name. Regret is optional."),
@@ -79,6 +80,11 @@ COPY = (
     ("Disk", "This one gets erased. No takebacks."),
     ("Encryption", "Blank means unencrypted. Reversible-ish."),
     ("Install", "Enter erases the disk. Esc if you flinched."),
+)
+
+DESKTOP_LABELS = (
+    ("cosmic", "COSMIC", "The one that ships."),
+    ("hyprland", "Hyprland", "Tiles. From a COPR. Still Fedora."),
 )
 
 
@@ -188,6 +194,7 @@ class Installer:
         self.lang_i = 0
         self.key_i = 0
         self.zone_i = 0
+        self.desktop_i = 0
         self.disks = disks()
         self.zones = timezones()
         curses.curs_set(0)
@@ -204,6 +211,7 @@ class Installer:
     def run(self) -> Config:
         steps = (
             self._welcome,
+            self._desktop,
             self._keyboard,
             self._language,
             self._user,
@@ -261,6 +269,7 @@ class Installer:
             locale=LANGUAGES[self.lang_i][0],
             keymap=keymap,
             xkb_layout=xkb,
+            desktop=DESKTOPS[self.desktop_i],
         )
 
     def _origin(self) -> tuple[int, int]:
@@ -280,6 +289,11 @@ class Installer:
     def _welcome(self) -> None:
         y = self._frame()
         self._bar(y, "  Enter", True)
+
+    def _desktop(self) -> None:
+        y = self._frame()
+        rows = [f"  {label}    {blurb}" for _id, label, blurb in DESKTOP_LABELS]
+        self._choices(y, rows, self.desktop_i)
 
     def _keyboard(self) -> None:
         y = self._frame()
@@ -326,6 +340,7 @@ class Installer:
         y = self._frame()
         disk = self.disks[self.disk_i][0] if self.disks else "?"
         rows = (
+            f"  Desktop     {DESKTOP_LABELS[self.desktop_i][1]}",
             f"  Disk        {disk}",
             f"  Encryption  {'LUKS' if self.luks else 'off'}",
             f"  User        {self.username}",
@@ -370,17 +385,19 @@ class Installer:
     def _move(self, key: int) -> None:
         delta = -1 if key in (curses.KEY_UP, curses.KEY_PPAGE, curses.KEY_BTAB) else 1
         if self.step == 1:
+            self.desktop_i = (self.desktop_i + delta) % len(DESKTOP_LABELS)
+        elif self.step == 2:
             self.key_i = (self.key_i + delta) % len(KEYBOARDS)
             _loadkeys(KEYBOARDS[self.key_i][0])
-        elif self.step == 2:
+        elif self.step == 3:
             self.lang_i = (self.lang_i + delta) % len(LANGUAGES)
-        elif self.step in (3, 4, 8):
+        elif self.step in (4, 5, 9):
             self.field = (self.field + delta) % 2
-        elif self.step == 6:
+        elif self.step == 7:
             rows = self._visible_zones()
             if rows:
                 self.zone_i = (self.zone_i + delta) % len(rows)
-        elif self.step == 7 and self.disks:
+        elif self.step == 8 and self.disks:
             self.disk_i = (self.disk_i + delta) % len(self.disks)
 
     def _backspace(self) -> None:
@@ -403,47 +420,47 @@ class Installer:
             self.zone_i = 0
 
     def _editor(self) -> str | None:
-        if self.step == 3:
-            return "username" if self.field == 0 else "full_name"
         if self.step == 4:
-            return "password" if self.field == 0 else "again"
+            return "username" if self.field == 0 else "full_name"
         if self.step == 5:
-            return "hostname"
+            return "password" if self.field == 0 else "again"
         if self.step == 6:
+            return "hostname"
+        if self.step == 7:
             return "filter"
-        if self.step == 8:
+        if self.step == 9:
             return "luks" if self.field == 0 else "luks_again"
         return None
 
     def _enter(self) -> bool:
         self.error = ""
-        if self.step == 3:
+        if self.step == 4:
             if not USER_RE.fullmatch(self.username):
                 self.error = "Username: lowercase, digits, _ or -, starting with a letter."
                 return False
-        elif self.step == 4:
+        elif self.step == 5:
             if not self.password or self.password != self.again:
                 self.error = "Passwords were empty or did not match."
                 return False
-        elif self.step == 5:
+        elif self.step == 6:
             if not HOST_RE.fullmatch(self.hostname):
                 self.error = "Hostname may use letters, digits, and interior hyphens."
                 return False
-        elif self.step == 6:
+        elif self.step == 7:
             if not self._visible_zones():
                 self.error = "No timezone matches that search."
                 return False
-        elif self.step == 7:
+        elif self.step == 8:
             if not self.disks:
                 self.error = "No disks found."
                 return False
-        elif self.step == 8:
+        elif self.step == 9:
             if self.luks != self.luks_again:
                 self.error = "Encryption passphrases did not match."
                 return False
         self.field = 0
         self.step += 1
-        return self.step >= 10
+        return self.step >= 11
 
 
 def _origin(win) -> tuple[int, int]:

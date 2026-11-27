@@ -102,6 +102,17 @@ else
     fail=1
 fi
 
+if rpm -q hyprland >/dev/null 2>&1 \
+    && [[ -f /usr/share/wayland-sessions/hyprland.desktop ]] \
+    && [[ -f /usr/share/wayland-sessions/cosmic.desktop ]] \
+    && [[ -f /usr/share/borked/hypr/hyprland.conf ]]
+then
+    say "ok desktop-sessions"
+else
+    say "FAIL desktop-sessions"
+    fail=1
+fi
+
 if [[ -f "$flatpak_cfg" ]] && awk '
     /^\[remote "flathub"\]$/ { remote = "flathub"; next }
     /^\[remote "cosmic"\]$/ { remote = "cosmic"; next }

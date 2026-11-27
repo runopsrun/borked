@@ -57,11 +57,16 @@ install_extra_repos() {
     for url in \
         https://brave-browser-rpm-release.s3.brave.com/brave-core.asc \
         https://download.copr.fedorainfracloud.org/results/rossetnocpes/herdr/pubkey.gpg \
-        https://download.copr.fedorainfracloud.org/results/che/zed/pubkey.gpg
+        https://download.copr.fedorainfracloud.org/results/che/zed/pubkey.gpg \
+        https://download.copr.fedorainfracloud.org/results/nett00n/hyprland/pubkey.gpg
     do
         curl -fsSL "$url" -o "$tmp"
         rpm --import "$tmp" || true
     done
+    if [[ -f /src/repos/keys/RPM-GPG-KEY-nett00n-hyprland ]]; then
+        install -m 0644 /src/repos/keys/RPM-GPG-KEY-nett00n-hyprland \
+            "$keys_etc/RPM-GPG-KEY-nett00n-hyprland"
+    fi
     rm -f "$tmp"
 }
 

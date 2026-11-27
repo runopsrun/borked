@@ -1,3 +1,4 @@
+//@ pragma IconTheme Cosmic
 import Quickshell
 import Quickshell.Bluetooth
 import Quickshell.Io
@@ -10,7 +11,9 @@ import QtQuick
 
 // Floating top edge. cosmic-session still starts cosmic-panel; the system
 // entries list keeps only the dock. This Quickshell build lists Wi-Fi only,
-// so the network icon also reads nmcli for a wired link.
+// so the network icon also reads nmcli for a wired link. Without an icon
+// theme Qt falls back to hicolor, and every status glyph becomes a magenta
+// checkerboard. Cosmic inherits Pop and Adwaita, so the names resolve.
 Variants {
     component Island: Rectangle {
         radius: 18

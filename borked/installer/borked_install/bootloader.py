@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import shutil
+import subprocess
 from pathlib import Path
 
 from borked_install.config import Config
@@ -58,16 +59,26 @@ def install_bootloader(root: str, layout: Layout, fs_uuid: str, cfg: Config) -> 
     finally:
         umount(root)
 
-    run(
-        [
-            "chroot",
-            root,
-            "setfiles",
-            "-F",
-            "/etc/selinux/targeted/contexts/files/file_contexts",
-            "/",
-        ]
-    )
+    # The live ISO kernel matches the image policy. A host that is one
+    # release behind can refuse a type with EINVAL; keep going so `just qemu`
+    # on that host still boots.
+    cmd = [
+        "chroot",
+        root,
+        "setfiles",
+        "-F",
+        "/etc/selinux/targeted/contexts/files/file_contexts",
+        "/",
+    ]
+    print("+", " ".join(cmd), flush=True)
+    result = subprocess.run(cmd, check=False, capture_output=True, text=True)
+    if result.returncode != 0:
+        err = (result.stderr or result.stdout or "").strip()
+        if err:
+            print(err, flush=True)
+        if "Invalid argument" not in err:
+            raise SystemExit(err or f"setfiles failed ({result.returncode})")
+        print("borked: setfiles hit a label the host kernel does not know; continuing", flush=True)
 
 
 def _fill_esp(root: str, efi_src: str, payload: str, layout: Layout, fs_uuid: str, cfg: Config) -> None:
