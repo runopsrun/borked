@@ -6,7 +6,7 @@ import os
 import subprocess
 from pathlib import Path
 
-from borked_install.config import Config
+from borked_install.config import DESKTOP_SESSIONS, Config
 from borked_install.partition import Layout
 from borked_install.util import run
 
@@ -29,6 +29,42 @@ def _token(value: str) -> bool:
     return bool(value) and all(ch.isalnum() or ch in "_.@-" for ch in value)
 
 
+def _user_uid(root: str, username: str) -> int:
+    for line in Path(root, "etc/passwd").read_text().splitlines():
+        parts = line.split(":")
+        if len(parts) >= 3 and parts[0] == username:
+            return int(parts[2])
+    raise SystemExit(f"no uid for {username}")
+
+
+def _seed_greeter_session(root: str, cfg: Config) -> None:
+    # cosmic-greeter remembers last_session per UID. Seed it so the first
+    # login opens the desktop the installer asked for.
+    session = DESKTOP_SESSIONS.get(cfg.desktop, "COSMIC")
+    uid = _user_uid(root, cfg.username)
+    greeter = Path(root) / "var/lib/cosmic-greeter/.config/cosmic/com.system76.CosmicGreeter/v1"
+    greeter.mkdir(parents=True, exist_ok=True)
+    (greeter / "users").write_text(
+        "{\n"
+        f"  {uid}: (\n"
+        f"    uid: {uid},\n"
+        f'    last_session: Some("{session}"),\n'
+        "  ),\n"
+        "}\n"
+    )
+    (greeter / "last_user").write_text(f"Some({uid})\n")
+    run(
+        [
+            "chroot",
+            root,
+            "chown",
+            "-R",
+            "cosmic-greeter:cosmic-greeter",
+            "/var/lib/cosmic-greeter",
+        ]
+    )
+
+
 def _write(path: str, text: str, mode: int = 0o644) -> None:
     Path(path).write_text(text)
     os.chmod(path, mode)
@@ -38,8 +74,11 @@ def configure(root: str, cfg: Config, layout: Layout, fs_uuid: str) -> None:
     zone = Path(root) / "usr/share/zoneinfo" / cfg.timezone
     if not zone.exists():
         raise SystemExit(f"timezone not in the image: {cfg.timezone}")
-    os.symlink(f"/usr/share/zoneinfo/{cfg.timezone}", os.path.join(root, "etc/localtime.tmp"))
-    os.replace(os.path.join(root, "etc/localtime.tmp"), os.path.join(root, "etc/localtime"))
+    localtime_tmp = os.path.join(root, "etc/localtime.tmp")
+    if os.path.lexists(localtime_tmp):
+        os.unlink(localtime_tmp)
+    os.symlink(f"/usr/share/zoneinfo/{cfg.timezone}", localtime_tmp)
+    os.replace(localtime_tmp, os.path.join(root, "etc/localtime"))
 
     _write(os.path.join(root, "etc/hostname"), cfg.hostname + "\n")
     _write(
@@ -61,8 +100,10 @@ def configure(root: str, cfg: Config, layout: Layout, fs_uuid: str) -> None:
     fstab = [
         f"UUID={fs_uuid} / btrfs subvol=@,compress=zstd:3 0 0",
         f"UUID={fs_uuid} /home btrfs subvol=@home,compress=zstd:3 0 0",
-        f"UUID={layout.esp_uuid} /boot/efi vfat umask=0077,shortname=winnt 0 2",
     ]
+    if layout.boot_uuid:
+        fstab.append(f"UUID={layout.boot_uuid} /boot ext4 defaults 1 2")
+    fstab.append(f"UUID={layout.esp_uuid} /boot/efi vfat umask=0077,shortname=winnt 0 2")
     if layout.luks_uuid:
         _write(
             os.path.join(root, "etc/crypttab"),
@@ -105,8 +146,6 @@ def configure(root: str, cfg: Config, layout: Layout, fs_uuid: str) -> None:
     config_dir = os.path.join(root, "home", cfg.username, ".config")
     os.makedirs(config_dir, exist_ok=True)
     Path(os.path.join(config_dir, "cosmic-initial-setup-done")).write_text("")
-    locale = cfg.locale if _token(cfg.locale) else "en_US.UTF-8"
-    xkb = cfg.xkb_layout if _token(cfg.xkb_layout) else "us"
     comp = os.path.join(config_dir, "cosmic/com.system76.CosmicComp/v1")
     settings = os.path.join(config_dir, "cosmic/com.system76.CosmicSettings/v1")
     os.makedirs(comp, exist_ok=True)
@@ -119,6 +158,16 @@ def configure(root: str, cfg: Config, layout: Layout, fs_uuid: str) -> None:
     background = os.path.join(config_dir, "cosmic/com.system76.CosmicBackground/v1")
     os.makedirs(background, exist_ok=True)
     Path(os.path.join(background, "all")).write_text(_WALLPAPER)
+    if cfg.desktop == "hyprland":
+        hypr = os.path.join(config_dir, "hypr")
+        os.makedirs(hypr, exist_ok=True)
+        for name in ("hyprland.conf", "hyprpaper.conf"):
+            src = Path(root) / "usr/share/borked/hypr" / name
+            if src.is_file():
+                text = src.read_text()
+                if name == "hyprland.conf":
+                    text = text.replace("kb_layout = us", f"kb_layout = {xkb}", 1)
+                Path(hypr, name).write_text(text)
     run(
         [
             "chroot",
@@ -129,6 +178,7 @@ def configure(root: str, cfg: Config, layout: Layout, fs_uuid: str) -> None:
             f"/home/{cfg.username}/.config",
         ]
     )
+    _seed_greeter_session(root, cfg)
     # systemd-run-generator redirects default.target from /run, but
     # set-default's /etc symlink wins, so systemd.run= never starts.
     # A conditioned unit still runs, and get-default stays graphical.

@@ -1,9 +1,9 @@
 Name:           borked-release
 Version:        1
-Release:        2%{?dist}
-Summary:        Borked OS release identity
+Release:        4%{?dist}
+Summary:        Borked release identity
 License:        MIT
-URL:            https://borked.invalid
+URL:            https://projectborked.com
 BuildArch:      noarch
 
 %{!?fedora_release:%{error:pass --define "fedora_release N"}}
@@ -75,6 +75,10 @@ fi
 /etc/dnf/protected.d/borked.conf
 
 %changelog
+* Sat Nov 28 2026 Borked <dev@borked.invalid> - 1-4
+- Require getenforce=Enforcing in borked-selfcheck and update package URL.
+* Thu Nov 26 2026 Borked OS <dev@borked.invalid> - 1-3
+- The boot check requires both COSMIC and Hyprland session files.
 * Mon Nov 09 2026 Borked OS <dev@borked.invalid> - 1-2
 - The boot check looks for BlueZ, UPower, and bluetooth.service.
 * Fri Nov 06 2026 Borked OS <dev@borked.invalid> - 1-1

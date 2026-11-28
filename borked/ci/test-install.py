@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 import subprocess
 import sys
@@ -17,6 +18,12 @@ SERIAL_BOOT = OUT / "serial-test.log"
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--desktop", choices=("cosmic", "hyprland"), default="cosmic")
+    parser.add_argument("--luks", default=None, help="Optional LUKS passphrase for encrypted install test.")
+    parser.add_argument("--skip-boot", action="store_true", help="Only verify unattended install completion.")
+    args = parser.parse_args()
+
     iso = OUT / "borked.iso"
     if not iso.is_file():
         print("missing out/borked.iso. Run just iso.", file=sys.stderr)
@@ -31,15 +38,17 @@ def main() -> int:
         json.dumps(
             {
                 "disk": "serial:borked-target",
-                "luks_passphrase": None,
+                "luks_passphrase": args.luks,
                 "username": "borked",
                 "full_name": "Borked User",
                 "password": "borkedos",
                 "hostname": "borked",
                 "timezone": "UTC",
+                "desktop": args.desktop,
                 "poweroff": True,
                 "kernel_extra": " ".join(
                     [
+                        "console=ttyS0,115200n8",
                         "systemd.run=/usr/bin/borked-selfcheck",
                         "systemd.run_success_action=poweroff",
                         "systemd.run_failure_action=poweroff",
@@ -85,6 +94,27 @@ def main() -> int:
         print(install_log[-4000:], file=sys.stderr)
         print("installer did not finish", file=sys.stderr)
         return 1
+    if args.skip_boot:
+        print("borked test: install PASS (boot skipped)")
+        return 0
+    if args.luks:
+        # LUKS prompts for a passphrase interactively in initramfs, so assert
+        # GRUB loaded the kernel and reached the cryptsetup passphrase prompt.
+        subprocess.run(
+            qemu
+            + [
+                "--expect",
+                "Please enter passphrase for disk",
+                "--timeout",
+                "300",
+                "disk",
+                str(DISK),
+                str(SERIAL_BOOT),
+            ],
+            check=True,
+        )
+        print("borked test (LUKS): PASS")
+        return 0
     subprocess.run(
         qemu
         + [

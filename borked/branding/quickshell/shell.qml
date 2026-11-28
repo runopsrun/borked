@@ -1,3 +1,4 @@
+//@ pragma IconTheme Cosmic
 import Quickshell
 import Quickshell.Bluetooth
 import Quickshell.Io
@@ -10,8 +11,42 @@ import QtQuick
 
 // Floating top edge. cosmic-session still starts cosmic-panel; the system
 // entries list keeps only the dock. This Quickshell build lists Wi-Fi only,
-// so the network icon also reads nmcli for a wired link.
-Variants {
+// so the network icon also reads nmcli for a wired link. Without an icon
+// theme Qt falls back to hicolor, and every status glyph becomes a magenta
+// checkerboard. Cosmic inherits Pop and Adwaita, so the names resolve.
+ShellRoot {
+    id: root
+    property string linkDump: ""
+
+    function refreshLink() {
+        linkTimer.interval = 800
+        if (!linkProbe.running)
+            linkTimer.restart()
+    }
+
+    Process {
+        id: linkProbe
+        command: ["nmcli", "-t", "-f", "TYPE,STATE,CONNECTION", "device"]
+        running: true
+        stdout: StdioCollector {
+            onStreamFinished: root.linkDump = text
+        }
+        onRunningChanged: {
+            if (!running)
+                linkTimer.start()
+        }
+    }
+
+    Timer {
+        id: linkTimer
+        interval: 4000
+        onTriggered: {
+            interval = 4000
+            linkProbe.running = true
+        }
+    }
+
+    Variants {
     component Island: Rectangle {
         radius: 18
         color: "#f012101a"
@@ -146,7 +181,6 @@ Variants {
             property var adapter: Bluetooth.defaultAdapter
             property var battery: UPower.displayDevice
             property bool batteryReady: battery !== null && battery.ready && battery.isLaptopBattery
-            property string linkDump: ""
 
             readonly property real level: soundReady ? sink.audio.volume : 0
             readonly property bool muted: soundReady && sink.audio.muted
@@ -158,8 +192,8 @@ Variants {
                 }
                 return null
             }
-            readonly property string wifiLink: connectedName(linkDump, "wifi")
-            readonly property string wiredLink: connectedName(linkDump, "ethernet")
+            readonly property string wifiLink: connectedName(root.linkDump, "wifi")
+            readonly property string wiredLink: connectedName(root.linkDump, "ethernet")
             readonly property string linkLabel: {
                 if (wifiLink !== "")
                     return wifiLink
@@ -229,9 +263,7 @@ Variants {
             }
 
             function refreshLink() {
-                linkTimer.interval = 800
-                if (!linkProbe.running)
-                    linkTimer.restart()
+                root.refreshLink()
             }
 
             function openCenter(name) {
@@ -280,28 +312,6 @@ Variants {
 
             PwObjectTracker {
                 objects: bar.sink !== null ? [bar.sink] : []
-            }
-
-            Process {
-                id: linkProbe
-                command: ["nmcli", "-t", "-f", "TYPE,STATE,CONNECTION", "device"]
-                running: true
-                stdout: StdioCollector {
-                    onStreamFinished: bar.linkDump = text
-                }
-                onRunningChanged: {
-                    if (!running)
-                        linkTimer.start()
-                }
-            }
-
-            Timer {
-                id: linkTimer
-                interval: 4000
-                onTriggered: {
-                    interval = 4000
-                    linkProbe.running = true
-                }
             }
 
             Island {
@@ -689,7 +699,7 @@ Variants {
                             Action {
                                 width: (parent.width - 20) / 3
                                 label: "Log out"
-                                onTriggered: bar.runPower(["bash", "-c", "loginctl terminate-user \"$USER\""])
+                                onTriggered: bar.runPower(["bash", "-c", "if [ -n \"$XDG_SESSION_ID\" ]; then loginctl terminate-session \"$XDG_SESSION_ID\"; else loginctl terminate-user \"$USER\"; fi"])
                             }
 
                             Action {
@@ -743,5 +753,6 @@ Variants {
                 }
             }
         }
+    }
     }
 }

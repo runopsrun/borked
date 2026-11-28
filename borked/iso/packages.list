@@ -9,6 +9,7 @@ python3
 btrfs-progs
 cryptsetup
 dosfstools
+e2fsprogs
 kernel
 kernel-modules
 zstd

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import shutil
+import subprocess
 from pathlib import Path
 
 from borked_install.config import Config
@@ -41,33 +42,131 @@ def _bind(root: str) -> list[str]:
     return mounted
 
 
-def install_bootloader(root: str, layout: Layout, fs_uuid: str, cfg: Config) -> None:
-    payload = root + ".efi-payload"
-    efi_src = os.path.join(root, "boot/efi")
-    if os.path.isdir(efi_src):
-        shutil.copytree(efi_src, payload, dirs_exist_ok=True)
-    # grub2-probe only accepts / when the chroot root is itself a mount.
-    run(["mount", "--bind", root, root])
-    try:
-        os.makedirs(efi_src, exist_ok=True)
-        mount(layout.esp, efi_src)
-        try:
-            _fill_esp(root, efi_src, payload, layout, fs_uuid, cfg)
-        finally:
-            umount(efi_src)
-    finally:
-        umount(root)
+def _only_invalid_argument(err: str) -> bool:
+    lines = [line.strip() for line in err.splitlines() if line.strip()]
+    return bool(lines) and all("Invalid argument" in line for line in lines)
 
-    run(
+
+def _grub_stub(layout: Layout, fs_uuid: str) -> str:
+    if layout.boot_uuid:
+        return (
+            "search --no-floppy --fs-uuid --set=root "
+            f"{layout.boot_uuid}\n"
+            "set prefix=($root)/grub2\n"
+            "export prefix\n"
+            "configfile $prefix/grub.cfg\n"
+        )
+    return (
+        "search --no-floppy --fs-uuid --set=root "
+        f"{fs_uuid}\n"
+        "set prefix=($root)/@/boot/grub2\n"
+        "export prefix\n"
+        "configfile $prefix/grub.cfg\n"
+    )
+
+
+def _clear_dir(path: str) -> None:
+    if not os.path.isdir(path):
+        return
+    for entry in os.listdir(path):
+        full = os.path.join(path, entry)
+        if os.path.isdir(full) and not os.path.islink(full):
+            shutil.rmtree(full)
+        else:
+            os.unlink(full)
+
+
+def _should_register_efi_entry(disk: str) -> bool:
+    name = os.path.basename(os.path.realpath(disk))
+    return not name.startswith("loop")
+
+
+def _register_efi_entry(root: str, layout: Layout) -> None:
+    if not _should_register_efi_entry(layout.disk):
+        return
+    if not os.path.isdir("/sys/firmware/efi/efivars"):
+        return
+    subprocess.run(
         [
             "chroot",
             root,
-            "setfiles",
-            "-F",
-            "/etc/selinux/targeted/contexts/files/file_contexts",
-            "/",
-        ]
+            "efibootmgr",
+            "--create",
+            "--disk",
+            layout.disk,
+            "--part",
+            "1",
+            "--label",
+            "Borked",
+            "--loader",
+            r"\EFI\fedora\shimx64.efi",
+        ],
+        check=False,
+        stdout=subprocess.DEVNULL if os.environ.get("BORKED_QUIET") == "1" else None,
+        stderr=subprocess.DEVNULL if os.environ.get("BORKED_QUIET") == "1" else None,
     )
+
+
+def install_bootloader(root: str, layout: Layout, fs_uuid: str, cfg: Config) -> None:
+    payload = root + ".efi-payload"
+    boot_payload = root + ".boot-payload"
+    boot_dir = os.path.join(root, "boot")
+    efi_src = os.path.join(root, "boot/efi")
+    try:
+        if os.path.isdir(efi_src):
+            shutil.copytree(efi_src, payload, dirs_exist_ok=True)
+        if layout.boot and os.path.isdir(boot_dir):
+            shutil.copytree(
+                boot_dir,
+                boot_payload,
+                ignore=shutil.ignore_patterns("efi"),
+                dirs_exist_ok=True,
+            )
+            _clear_dir(boot_dir)
+        # grub2-probe only accepts / when the chroot root is itself a mount.
+        run(["mount", "--bind", root, root])
+        try:
+            if layout.boot:
+                os.makedirs(boot_dir, exist_ok=True)
+                mount(layout.boot, boot_dir)
+                if os.path.isdir(boot_payload):
+                    shutil.copytree(boot_payload, boot_dir, dirs_exist_ok=True)
+            try:
+                os.makedirs(efi_src, exist_ok=True)
+                mount(layout.esp, efi_src)
+                try:
+                    _fill_esp(root, efi_src, payload, layout, fs_uuid, cfg)
+                finally:
+                    umount(efi_src)
+            finally:
+                if layout.boot:
+                    umount(boot_dir)
+        finally:
+            umount(root)
+    finally:
+        shutil.rmtree(payload, ignore_errors=True)
+        shutil.rmtree(boot_payload, ignore_errors=True)
+
+    # The live ISO kernel matches the image policy. A host that is one
+    # release behind can refuse a type with EINVAL; keep going so `just qemu`
+    # on that host still boots.
+    cmd = [
+        "chroot",
+        root,
+        "setfiles",
+        "-F",
+        "/etc/selinux/targeted/contexts/files/file_contexts",
+        "/",
+    ]
+    print("+", " ".join(cmd), flush=True)
+    result = subprocess.run(cmd, check=False, capture_output=True, text=True)
+    if result.returncode != 0:
+        err = (result.stderr or result.stdout or "").strip()
+        if err:
+            print(err, flush=True)
+        if not _only_invalid_argument(err):
+            raise SystemExit(err or f"setfiles failed ({result.returncode})")
+        print("borked: setfiles hit a label the host kernel does not know; continuing", flush=True)
 
 
 def _fill_esp(root: str, efi_src: str, payload: str, layout: Layout, fs_uuid: str, cfg: Config) -> None:
@@ -92,7 +191,7 @@ def _fill_esp(root: str, efi_src: str, payload: str, layout: Layout, fs_uuid: st
     luks = f" rd.luks.uuid={layout.luks_uuid}" if layout.luks_uuid else ""
     cmdline = (
         f"root=UUID={fs_uuid} rootflags=subvol=@ rw selinux=1"
-        f"{luks} console=tty0 console=ttyS0,115200n8{extra}\n"
+        f"{luks} console=tty0{extra}\n"
     )
     os.makedirs(os.path.join(root, "etc/kernel"), exist_ok=True)
     Path(os.path.join(root, "etc/kernel/cmdline")).write_text(cmdline)
@@ -123,18 +222,20 @@ def _fill_esp(root: str, efi_src: str, payload: str, layout: Layout, fs_uuid: st
             vmlinuz = f"/lib/modules/{kver}/vmlinuz"
             if not os.path.exists(os.path.join(root, vmlinuz.lstrip("/"))):
                 vmlinuz = f"/boot/vmlinuz-{kver}"
-            run(
-                [
-                    "chroot",
-                    root,
-                    "dracut",
-                    "--force",
-                    "--no-hostonly",
-                    f"/boot/initramfs-{kver}.img",
-                    kver,
-                ]
-            )
-            run(["chroot", root, "kernel-install", "add", kver, vmlinuz])
+            initrd = f"/boot/initramfs-{kver}.img"
+            if not os.path.exists(os.path.join(root, initrd.lstrip("/"))):
+                run(
+                    [
+                        "chroot",
+                        root,
+                        "dracut",
+                        "--force",
+                        "--no-hostonly",
+                        initrd,
+                        kver,
+                    ]
+                )
+            run(["chroot", root, "kernel-install", "add", kver, vmlinuz, initrd])
         run(["chroot", root, "grub2-mkconfig", "-o", "/boot/grub2/grub.cfg"])
         # grub's BLS helper can drop back to a short root= line. Put the
         # command line we wrote back onto every entry.
@@ -146,16 +247,11 @@ def _fill_esp(root: str, efi_src: str, payload: str, layout: Layout, fs_uuid: st
                 else:
                     lines.append(line)
             entry.write_text("\n".join(lines) + "\n")
+        _register_efi_entry(root, layout)
     finally:
         for target in reversed(mounted):
             umount(target)
 
-    stub = (
-        "search --no-floppy --fs-uuid --set=root "
-        f"{fs_uuid}\n"
-        "set prefix=($root)/@/boot/grub2\n"
-        "export prefix\n"
-        "configfile $prefix/grub.cfg\n"
-    )
+    stub = _grub_stub(layout, fs_uuid)
     for directory in ("EFI/fedora", "EFI/BOOT"):
         Path(os.path.join(efi_src, directory, "grub.cfg")).write_text(stub)

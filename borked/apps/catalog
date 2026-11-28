@@ -7,7 +7,9 @@
 #   dnf-repo   first word is the repo file in repos/<name>.repo, then packages
 #   script     target is the vendor installer URL, run as the user
 #   github-rpm target is owner/repo/filename-glob from the latest release
+#   github-bundle  same glob, for one .tar.gz or one .AppImage
 #   virt       package names, then libvirtd and the libvirt group
+#   distrobox  target is "image container". check is the command exported to ~/.local/bin
 #
 # check is the rpm name, or the command the script puts on PATH.
 # Add a line. A new category name starts a new section.
@@ -16,7 +18,18 @@ Coding agents | codex | Codex | OpenAI's terminal agent. | script | https://chat
 Coding agents | claude | Claude | Anthropic's terminal agent. | dnf-repo | claude-code claude-code | claude-code
 Coding agents | antigravity | Antigravity | Google's terminal agent. The IDE has no signed package. | script | https://antigravity.google/cli/install.sh | agy
 Coding agents | opencode | OpenCode | Terminal coding agent. | script | https://opencode.ai/v2/install | opencode
+Coding agents | t3 | T3 Code | Runs the agents already on the machine. | script | https://t3.codes/install.sh | t3
+Coding agents | hermes | Hermes | Desktop for Hermes Agent. | github-rpm | fathah/hermes-desktop/hermes-desktop-*.rpm | hermes-desktop
 Editors | vscode | VS Code | Microsoft's editor. | dnf-repo | vscode code | code
 Editors | cursor | Cursor | The other editor. | dnf-repo | cursor cursor | cursor
 Communication | rambox | Rambox | Pro is the account you sign into. | github-rpm | ramboxapp/download/Rambox-*-linux-x64.rpm | rambox
 Virtual machines | virt | virt-manager and KVM | libvirt, QEMU, and the manager. Log out once so the group applies. | virt | virt-manager qemu-kvm libvirt-daemon-kvm virt-install | virt-manager
+Security | duo | Cisco Duo | Duo Unix for SSH. Run `borked duo` after install. | dnf | duo_unix duo_unix-selinux | duo_unix
+Hardware | kiwi | Cytrence Kiwi | USB KVM app in an Ubuntu 24.04 distrobox. Fedora is not on their list. | distrobox | ubuntu:24.04 kiwi | cytrencekiwi.sh
+Hardware | scrcpy | scrcpy | Mirror an Android screen. Upstream build, Fedora 45 does not ship it. | github-bundle | Genymobile/scrcpy/scrcpy-linux-x86_64-*.tar.gz | scrcpy
+Streaming | moonlight | Moonlight | Stream a game from a Sunshine host. | dnf | moonlight-qt | moonlight-qt
+Streaming | sunshine | Sunshine | Share this machine with Moonlight. | github-rpm | LizardByte/Sunshine/Sunshine-*-fc45.x86_64.rpm | Sunshine
+Design | solidcraft | SolidCraft | CAD from the current GitHub release. | github-rpm | tangency-labs/solidcraft/solidcraft-linux-x86_64.rpm | solidcraft
+Design | artcraft | ArtCraft | Generative studio. The package name is art-craft. | github-rpm | storytold/artcraft/artcraft-*-linux-x86_64.rpm | art-craft
+3D printing | orcaslicer | OrcaSlicer | Slicer. The Linux build is an Ubuntu AppImage. | github-bundle | SoftFever/OrcaSlicer/OrcaSlicer_Linux_AppImage_Ubuntu2404_V*.AppImage | orcaslicer
+3D printing | prusaslicer | PrusaSlicer | Prusa's slicer, from Fedora. | dnf | prusa-slicer | prusa-slicer

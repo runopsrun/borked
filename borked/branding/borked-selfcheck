@@ -46,8 +46,8 @@ fi
 
 enf="$(getenforce 2>/dev/null || echo unknown)"
 say "getenforce=${enf}"
-if [[ "$enf" == "Permissive" ]]; then
-    say "FAIL getenforce=Permissive"
+if [[ "$enf" != "Enforcing" ]]; then
+    say "FAIL getenforce=${enf}"
     fail=1
 fi
 
@@ -99,6 +99,17 @@ then
     say "ok status-services"
 else
     say "FAIL status-services"
+    fail=1
+fi
+
+if rpm -q hyprland >/dev/null 2>&1 \
+    && [[ -f /usr/share/wayland-sessions/hyprland.desktop ]] \
+    && [[ -f /usr/share/wayland-sessions/cosmic.desktop ]] \
+    && [[ -f /usr/share/borked/hypr/hyprland.conf ]]
+then
+    say "ok desktop-sessions"
+else
+    say "FAIL desktop-sessions"
     fail=1
 fi
 

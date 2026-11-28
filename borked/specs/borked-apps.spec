@@ -1,6 +1,6 @@
 Name:           borked-apps
 Version:        1
-Release:        4%{?dist}
+Release:        8%{?dist}
 Summary:        Borked optional software picker
 License:        MIT
 URL:            https://projectborked.com
@@ -37,6 +37,14 @@ install -m 0644 %{buildroot}/usr/share/borked/apps/borked-apps.desktop \
 /usr/share/applications/borked-apps.desktop
 
 %changelog
+* Sat Nov 28 2026 Borked <dev@borked.invalid> - 1-8
+- Reuse existing Duo config on --ssh, avoid failing when sshd is inactive, prime sudo before installs, and use user_home().
+* Fri Nov 27 2026 Borked <dev@borked.invalid> - 1-7
+- Optional installs for scrcpy, T3 Code, Moonlight, Sunshine, SolidCraft, ArtCraft, OrcaSlicer, PrusaSlicer, and Hermes.
+* Fri Nov 27 2026 Borked <dev@borked.invalid> - 1-6
+- borked kiwi installs Cytrence Kiwi into an Ubuntu 24.04 distrobox.
+* Fri Nov 27 2026 Borked <dev@borked.invalid> - 1-5
+- borked duo configures Cisco Duo Unix after optional install.
 * Mon Nov 09 2026 Borked <dev@borked.invalid> - 1-4
 - The wordmark is centered and fades from raspberry to pale pink.
 * Mon Nov 09 2026 Borked <dev@borked.invalid> - 1-3

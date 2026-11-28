@@ -11,6 +11,7 @@ grub2-efi-x64
 shim-x64
 efibootmgr
 btrfs-progs
+cryptsetup
 NetworkManager
 pipewire
 wireplumber
@@ -44,6 +45,15 @@ quickshell
 # The bar talks to BlueZ and UPower. The desktop group does not pull them.
 bluez
 upower
+# Optional session. Same greeter; the installer picks the default.
+# Packages come from repos/hyprland.repo (nett00n/hyprland COPR).
+hyprland
+xdg-desktop-portal-hyprland
+waybar
+wofi
+hyprpaper
+hyprlock
+hypridle
 # Daily apps. wine-core's scriptlet aborts the image transaction, so
 # the root build installs those two packages with scripts off and
 # points /usr/bin/wine at wine64 itself.

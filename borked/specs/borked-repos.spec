@@ -1,9 +1,9 @@
 Name:           borked-repos
 Version:        1
-Release:        1%{?dist}
-Summary:        Borked OS package repository
+Release:        2%{?dist}
+Summary:        Borked package repository
 License:        MIT
-URL:            https://borked.invalid
+URL:            https://projectborked.com
 BuildArch:      noarch
 
 %{!?fedora_release:%{error:pass --define "fedora_release N"}}
@@ -39,5 +39,7 @@ EOF
 /etc/pki/rpm-gpg/RPM-GPG-KEY-borked
 
 %changelog
+* Sat Nov 28 2026 Borked <dev@borked.invalid> - 1-2
+- Update package URL and summary.
 * Fri Nov 06 2026 Borked OS <dev@borked.invalid> - 1-1
 - Initial Borked repository definition.
