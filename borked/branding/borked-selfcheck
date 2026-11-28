@@ -46,8 +46,8 @@ fi
 
 enf="$(getenforce 2>/dev/null || echo unknown)"
 say "getenforce=${enf}"
-if [[ "$enf" == "Permissive" ]]; then
-    say "FAIL getenforce=Permissive"
+if [[ "$enf" != "Enforcing" ]]; then
+    say "FAIL getenforce=${enf}"
     fail=1
 fi
 

@@ -52,6 +52,8 @@ def run(argv: list[str]) -> int:
             return 0
     try:
         app = _catalog_app()
+        if os.geteuid() != 0 and sys.stdin.isatty():
+            subprocess.run(["sudo", "-v"], check=False)
         install(app, print)
         return 0
     except InstallError as exc:
@@ -210,6 +212,8 @@ def _keep_dummy_audio(log) -> None:
     if path.is_file():
         log(f"{path} already has the local Kiwi overrides.")
         return
+    config_dir = _home() / ".config"
+    config_existed = config_dir.exists()
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
         "# Kept from the previous Kiwi launcher. nouveau HDMI can blank a display.\n"
@@ -219,6 +223,8 @@ def _keep_dummy_audio(log) -> None:
     user = invoking_user()
     if os.geteuid() == 0 and user is not None:
         record = pwd.getpwnam(user)
+        if not config_existed:
+            os.chown(config_dir, record.pw_uid, record.pw_gid)
         os.chown(path.parent, record.pw_uid, record.pw_gid)
         os.chown(path, record.pw_uid, record.pw_gid)
     log(f"Wrote {path} so the old audio workaround stays.")
@@ -274,7 +280,7 @@ def _as_user(
         kwargs["group"] = record.pw_gid
         kwargs["env"] = env
     elif not as_user and os.geteuid() != 0:
-        cmd = ["sudo", "-n", *cmd]
+        cmd = ["sudo", *cmd] if sys.stdin.isatty() else ["sudo", "-n", *cmd]
     log(" ".join(cmd))
     if input_bytes is not None:
         done = subprocess.run(cmd, input=input_bytes, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, **kwargs)

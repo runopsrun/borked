@@ -42,6 +42,36 @@ KEYBOARDS = (
 
 USER_RE = re.compile(r"[a-z_][a-z0-9_-]{0,31}")
 HOST_RE = re.compile(r"[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?")
+RESERVED_USERS = frozenset(
+    {
+        "root",
+        "bin",
+        "daemon",
+        "adm",
+        "lp",
+        "sync",
+        "shutdown",
+        "halt",
+        "mail",
+        "operator",
+        "games",
+        "ftp",
+        "nobody",
+        "sshd",
+        "dbus",
+        "polkitd",
+        "tss",
+        "rtkit",
+        "pipewire",
+        "flatpak",
+        "cosmic-greeter",
+        "systemd-coredump",
+        "systemd-network",
+        "systemd-resolve",
+        "systemd-oom",
+    }
+)
+INSTALL_LOG = Path("/run/borked/install.log")
 
 # Three rows. A two-row B has no top or bottom bar, so the word reads as DORKED.
 LOGO = (
@@ -88,19 +118,71 @@ DESKTOP_LABELS = (
 )
 
 
+def _iso_parent_disks() -> set[str]:
+    excluded: set[str] = set()
+    try:
+        src = subprocess.check_output(
+            ["findmnt", "-no", "SOURCE", "/run/iso"],
+            text=True,
+            stderr=subprocess.DEVNULL,
+        ).strip()
+    except (OSError, subprocess.CalledProcessError):
+        return excluded
+    if not src:
+        return excluded
+    name = os.path.basename(os.path.realpath(src))
+    if name:
+        excluded.add(name)
+    try:
+        pk = subprocess.check_output(
+            ["lsblk", "-no", "PKNAME", src],
+            text=True,
+            stderr=subprocess.DEVNULL,
+        ).strip()
+        if pk:
+            excluded.add(pk.splitlines()[0].strip())
+    except (OSError, subprocess.CalledProcessError):
+        pass
+    return excluded
+
+
+def _filter_disks(lsblk_output: str, excluded: set[str] | None = None) -> list[tuple[str, str]]:
+    skip = excluded or set()
+    found = []
+    for line in lsblk_output.splitlines():
+        parts = line.split()
+        if len(parts) < 3 or parts[2] != "disk":
+            continue
+        name, size = parts[0], parts[1]
+        ro = parts[3] if len(parts) >= 4 else "0"
+        if ro == "1" or name in skip:
+            continue
+        if name.startswith(("zram", "ram", "loop", "sr")):
+            continue
+        found.append((f"/dev/{name}", size))
+    return found
+
+
 def disks() -> list[tuple[str, str]]:
     try:
         out = subprocess.check_output(
-            ["lsblk", "-dn", "-o", "NAME,SIZE,TYPE"], text=True
+            ["lsblk", "-dn", "-o", "NAME,SIZE,TYPE,RO"], text=True
         )
     except (OSError, subprocess.CalledProcessError):
         return []
-    found = []
-    for line in out.splitlines():
-        parts = line.split()
-        if len(parts) >= 3 and parts[2] == "disk":
-            found.append((f"/dev/{parts[0]}", parts[1]))
-    return found
+    return _filter_disks(out, _iso_parent_disks())
+
+
+def _is_reserved_user(username: str) -> bool:
+    if username in RESERVED_USERS:
+        return True
+    try:
+        for line in Path("/etc/passwd").read_text(errors="replace").splitlines():
+            if line.split(":", 1)[0] == username:
+                return True
+    except OSError:
+        pass
+    return False
 
 
 def timezones() -> list[str]:
@@ -238,6 +320,7 @@ class Installer:
             if key == 27 and self.step > 0:
                 self.error = ""
                 self.filter = ""
+                self.zone_i = 0
                 self.step -= 1
                 continue
             if key in (curses.KEY_UP, curses.KEY_DOWN, curses.KEY_PPAGE, curses.KEY_NPAGE, 9, curses.KEY_BTAB):
@@ -256,7 +339,8 @@ class Installer:
     def _config(self) -> Config:
         keymap, xkb, _label = KEYBOARDS[self.key_i]
         disk, _size = self.disks[self.disk_i]
-        zone = self._visible_zones()[self.zone_i]
+        zones = self._visible_zones()
+        zone = zones[min(self.zone_i, len(zones) - 1)] if zones else "UTC"
         return Config(
             disk=resolve_disk(disk),
             luks_passphrase=self.luks or None,
@@ -270,6 +354,7 @@ class Installer:
             keymap=keymap,
             xkb_layout=xkb,
             desktop=DESKTOPS[self.desktop_i],
+            interactive=True,
         )
 
     def _origin(self) -> tuple[int, int]:
@@ -339,6 +424,8 @@ class Installer:
     def _confirm(self) -> None:
         y = self._frame()
         disk = self.disks[self.disk_i][0] if self.disks else "?"
+        zones = self._visible_zones()
+        zone = zones[min(self.zone_i, len(zones) - 1)] if zones else "UTC"
         rows = (
             f"  Desktop     {DESKTOP_LABELS[self.desktop_i][1]}",
             f"  Disk        {disk}",
@@ -347,7 +434,7 @@ class Installer:
             f"  Hostname    {self.hostname}",
             f"  Language    {LANGUAGES[self.lang_i][1]}",
             f"  Keyboard    {KEYBOARDS[self.key_i][2]}",
-            f"  Timezone    {self._visible_zones()[self.zone_i] if self._visible_zones() else 'UTC'}",
+            f"  Timezone    {zone}",
         )
         for row in rows:
             self._bar(y, row, False)
@@ -437,6 +524,9 @@ class Installer:
         if self.step == 4:
             if not USER_RE.fullmatch(self.username):
                 self.error = "Username: lowercase, digits, _ or -, starting with a letter."
+                return False
+            if _is_reserved_user(self.username):
+                self.error = f"Username '{self.username}' is reserved by the system."
                 return False
         elif self.step == 5:
             if not self.password or self.password != self.again:
@@ -571,9 +661,9 @@ def ask(stream: str) -> Config:
     return curses.wrapper(lambda stdscr: Installer(stdscr, stream).run())
 
 
-def present_install(cfg: Config) -> None:
+def present_install(cfg: Config) -> int:
     _attach_console()
-    curses.wrapper(lambda stdscr: _present(stdscr, cfg))
+    return curses.wrapper(lambda stdscr: _present(stdscr, cfg))
 
 
 def _colors() -> int:
@@ -629,6 +719,11 @@ def _present(stdscr, cfg: Config) -> None:
     finally:
         sys.stdout = old_out
         sys.stderr = old_err
+        try:
+            INSTALL_LOG.parent.mkdir(parents=True, exist_ok=True)
+            INSTALL_LOG.write_text("\n".join(log.lines) + ("\n" if log.lines else ""))
+        except OSError:
+            pass
 
     stdscr.erase()
     if failed:
@@ -644,9 +739,20 @@ def _present(stdscr, cfg: Config) -> None:
         _add(stdscr, y, x, failed[:panel], accent)
         for offset, line in enumerate(log.lines[-6:]):
             _add(stdscr, y + 2 + offset, x, line[:panel], curses.A_DIM)
+        _add(
+            stdscr,
+            stdscr.getmaxyx()[0] - 2,
+            x,
+            "r  reboot    s  shell    log: /run/borked/install.log",
+            curses.A_DIM,
+        )
         stdscr.refresh()
         while True:
-            stdscr.getch()
+            key = stdscr.getch()
+            if key in (ord("r"), ord("R")):
+                return 0
+            if key in (ord("s"), ord("S"), 27):
+                return 1
     y = _frame(
         stdscr,
         "It's on the disk.",
@@ -661,4 +767,4 @@ def _present(stdscr, cfg: Config) -> None:
     while True:
         key = stdscr.getch()
         if key in (10, 13, curses.KEY_ENTER):
-            return
+            return 0

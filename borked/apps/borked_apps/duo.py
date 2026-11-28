@@ -59,12 +59,15 @@ def run(argv: list[str]) -> int:
 
     try:
         _ensure_installed()
-        ikey = (args.ikey or "").strip() or _ask("Integration key (ikey)")
-        skey = (args.skey or "").strip() or _ask_secret("Secret key (skey)")
-        host = (args.host or "").strip() or _ask("API hostname (api-XXXX.duosecurity.com)")
-        _validate(ikey, skey, host)
-        _write_conf(ikey, skey, host, args.failmode)
-        print(say(DUO_DONE, path=str(CONF)))
+        has_creds = any((args.ikey, args.skey, args.host))
+        ssh_only = args.ssh and not has_creds and CONF.exists()
+        if not ssh_only:
+            ikey = (args.ikey or "").strip() or _ask("Integration key (ikey)")
+            skey = (args.skey or "").strip() or _ask_secret("Secret key (skey)")
+            host = (args.host or "").strip() or _ask("API hostname (api-XXXX.duosecurity.com)")
+            _validate(ikey, skey, host)
+            _write_conf(ikey, skey, host, args.failmode)
+            print(say(DUO_DONE, path=str(CONF)))
 
         want_ssh = args.ssh
         if not args.ssh and not args.no_ssh and sys.stdin.isatty():
@@ -154,7 +157,15 @@ def _enable_ssh() -> None:
     )
     _root_write(SSHD_DROPIN, text, 0o644)
     _run(["sshd", "-t"])
-    _run(["systemctl", "reload", "sshd"])
+    active = subprocess.run(
+        ["systemctl", "is-active", "--quiet", "sshd"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    if active.returncode == 0:
+        _run(["systemctl", "reload", "sshd"])
+    else:
+        print("sshd is not running yet. The Duo drop-in will apply when you start sshd.")
 
 
 def _root_write(

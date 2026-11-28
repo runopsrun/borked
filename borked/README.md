@@ -26,7 +26,9 @@ GitHub runs `just check` from `borked/` using the workflow at the repository roo
 
 Borked's original source is MIT licensed; see [LICENSE](../LICENSE). Bundled fonts retain their accompanying SIL Open Font Licenses. Upstream packages retain their own licenses.
 
-The image enables two system Flatpak remotes. Flathub is the full remote at `https://dl.flathub.org/repo/`. The COSMIC remote is `https://apt.pop-os.org/cosmic/`. Both `.flatpakrepo` files live in `repos/` and carry their signing keys. `convert.sh` adds the same two remotes.
+The image enables two system Flatpak remotes. Flathub is the full remote at `https://dl.flathub.org/repo/`. The COSMIC remote is `https://apt.pop-os.org/cosmic/`. Both `.flatpakrepo` files live in `repos/` and carry their signing keys. `convert.sh` adds both remotes and removes Fedora's Flathub filter if an existing `flathub` remote was present. Third-party RPM repo signing keys are pinned in `repos/keys/`.
+
+Encrypted installs create a 1 GiB unencrypted ext4 `/boot` partition between the ESP and the LUKS2 Btrfs container so Fedora's signed GRUB boots Argon2id LUKS2 without weakening key derivation. Unencrypted installs keep a two-partition ESP + Btrfs layout.
 
 The top bar is Quickshell (`/usr/share/borked/quickshell/shell.qml`). COSMIC's panel process still starts, and its system entries list keeps the dock, so the top edge is free. The user unit is `borked-quickshell.service`. The bar points at the Cosmic icon theme so status glyphs resolve. It floats as three pills: the name, the clock, and status icons for sound, Bluetooth, network, battery on a laptop, the system tray, Agents, and power. The status icons open one control center. Scroll the sound icon to change volume. Right-click it to mute. That bar is for COSMIC. Hyprland gets Waybar from the same image, with defaults under `/usr/share/borked/hypr/`. The installer asks COSMIC or Hyprland and seeds `cosmic-greeter` so login opens the chosen session.
 

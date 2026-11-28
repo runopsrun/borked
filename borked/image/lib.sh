@@ -45,29 +45,14 @@ install_extra_repos() {
     if [[ -n "$dest" ]]; then
         return 0
     fi
-    dnf_build -y install distribution-gpg-keys curl
-    local key url tmp
-    tmp="$(mktemp)"
+    dnf_build -y install distribution-gpg-keys
+    local key
     for key in "$keys_etc"/* \
         "/usr/share/distribution-gpg-keys/rpmfusion/RPM-GPG-KEY-rpmfusion-nonfree-fedora-${RELEASE}"
     do
         [[ -f "$key" ]] || continue
         rpm --import "$key" || true
     done
-    for url in \
-        https://brave-browser-rpm-release.s3.brave.com/brave-core.asc \
-        https://download.copr.fedorainfracloud.org/results/rossetnocpes/herdr/pubkey.gpg \
-        https://download.copr.fedorainfracloud.org/results/che/zed/pubkey.gpg \
-        https://download.copr.fedorainfracloud.org/results/nett00n/hyprland/pubkey.gpg
-    do
-        curl -fsSL "$url" -o "$tmp"
-        rpm --import "$tmp" || true
-    done
-    if [[ -f /src/repos/keys/RPM-GPG-KEY-nett00n-hyprland ]]; then
-        install -m 0644 /src/repos/keys/RPM-GPG-KEY-nett00n-hyprland \
-            "$keys_etc/RPM-GPG-KEY-nett00n-hyprland"
-    fi
-    rm -f "$tmp"
 }
 
 write_borked_repo() {

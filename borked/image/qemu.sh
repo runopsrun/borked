@@ -33,6 +33,7 @@ python3 - "$config" "$loop" "$stream" <<'PY'
 import json, sys
 path, disk, stream = sys.argv[1:]
 extra = " ".join([
+    "console=ttyS0,115200n8",
     "systemd.run=/usr/bin/borked-selfcheck",
     "systemd.run_success_action=poweroff",
     "systemd.run_failure_action=poweroff",

@@ -35,6 +35,7 @@ class Config:
     keymap: str = "us"
     xkb_layout: str = "us"
     desktop: str = "cosmic"
+    interactive: bool = False
 
 
 def _mount_label(label: str, target: str) -> bool:

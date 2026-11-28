@@ -193,8 +193,12 @@ rm -f "$sysroot/var/lib/dbus/machine-id"
 if [[ -f "$sysroot/etc/resolv.conf" && ! -L "$sysroot/etc/resolv.conf" ]]; then
     rm -f "$sysroot/etc/resolv.conf"
 fi
-rm -rf "$sysroot/var/cache/libdnf5" "$sysroot/var/cache/dnf" "$sysroot/var/log"
-install -d "$sysroot/var/log"
+rm -rf "$sysroot/var/cache/libdnf5" "$sysroot/var/cache/dnf"
+if [[ -d "$sysroot/var/log" ]]; then
+    find "$sysroot/var/log" -type f -delete
+else
+    install -d "$sysroot/var/log"
+fi
 
 if ! grep -q '^SELINUX=enforcing$' "$sysroot/etc/selinux/config"; then
     echo "SELinux config is not enforcing" >&2
@@ -249,17 +253,21 @@ btrfs property set "$sysroot" ro false
 stream_sha="$(sha256sum /src/out/borked-root.btrfs.zst | awk '{print $1}')"
 lock_sha="$(sha256sum /src/packages/lock | awk '{print $1}')"
 count="$(grep -Ecve '^[[:space:]]*(#|$)' /src/packages/lock || true)"
-python3 - "$stream_sha" "$lock_sha" "$count" "$variant" <<'PY'
+signed=0
+if [[ -n "${BORKED_RELEASE_KEY:-}" ]]; then
+    signed=1
+fi
+python3 - "$stream_sha" "$lock_sha" "$count" "$variant" "$signed" <<'PY'
 import json, sys
 from pathlib import Path
-stream, lock, count, variant = sys.argv[1:]
+stream, lock, count, variant, signed = sys.argv[1:]
 Path("/src/out/manifest.json").write_text(json.dumps({
     "fedora_release": int(open("/src/release/fedora").read()),
     "variant": variant,
     "package_count": int(count),
     "lock_sha256": lock,
     "stream_sha256": stream,
-    "signed": False,
+    "signed": signed == "1",
 }, indent=2) + "\n")
 PY
 echo "stream sha256 ${stream_sha}"

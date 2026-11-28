@@ -5,6 +5,6 @@ type=rpm-md
 enabled=1
 gpgcheck=1
 repo_gpgcheck=0
-gpgkey=https://download.copr.fedorainfracloud.org/results/nett00n/hyprland/pubkey.gpg
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-nett00n-hyprland
 priority=110
 skip_if_unavailable=0

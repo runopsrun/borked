@@ -50,10 +50,10 @@ def is_installed(app: App) -> bool:
         return done.returncode == 0
     if shutil.which(app.check):
         return True
-    user = invoking_user()
-    if user is None:
+    home = user_home()
+    if home is None:
         return False
-    return Path(f"/home/{user}/.local/bin/{app.check}").is_file()
+    return (home / ".local" / "bin" / app.check).is_file()
 
 
 def install(app: App, log) -> None:
@@ -113,8 +113,8 @@ def _run(cmd: list[str], log, *, root: bool = True, user: str | None = None) -> 
         raise InstallError(f"exit {done.returncode}")
 
 
-def _fetch(url: str, timeout: int = 120) -> bytes:
-    request = urllib.request.Request(url, headers={"User-Agent": UA, "Accept": "application/octet-stream"})
+def _fetch(url: str, timeout: int = 120, *, accept: str = "application/octet-stream") -> bytes:
+    request = urllib.request.Request(url, headers={"User-Agent": UA, "Accept": accept})
     with urllib.request.urlopen(request, timeout=timeout) as response:
         return response.read()
 
@@ -178,7 +178,7 @@ def _github_asset(app: App, log) -> dict:
         raise InstallError(f"{app.id} target must be owner/repo/glob") from exc
     url = f"https://api.github.com/repos/{owner}/{repo}/releases/latest"
     log(f"fetch {url}")
-    payload = json.loads(_fetch(url).decode())
+    payload = json.loads(_fetch(url, accept="application/vnd.github+json").decode())
     matches = [asset for asset in payload.get("assets", []) if fnmatch.fnmatch(asset.get("name", ""), pattern)]
     if len(matches) != 1:
         found = ", ".join(asset.get("name", "") for asset in matches) or "nothing"
@@ -215,7 +215,7 @@ def _install_appimage(app: App, blob: bytes, log) -> None:
     payload = root / f"{app.check}.AppImage"
     wrapper = (
         "#!/bin/sh\n"
-        f"exec {payload} --appimage-extract-and-run \"$@\"\n"
+        f'exec "{payload}" --appimage-extract-and-run "$@"\n'
     )
     _stage_bytes(payload, blob, 0o755, log)
     _stage_text(Path("/usr/local/bin") / app.check, wrapper, 0o755, log)

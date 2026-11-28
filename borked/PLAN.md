@@ -111,7 +111,8 @@ Questions, in one pass: desktop (COSMIC or Hyprland), disk, optional LUKS passph
 Default layout, UEFI:
 
 - ESP, FAT32, 1 GiB, mounted at `/boot/efi`
-- One LUKS container if requested, then one btrfs
+- When LUKS is requested, a 1 GiB unencrypted ext4 `/boot` partition so Fedora's signed GRUB can boot an Argon2id LUKS2 root
+- One LUKS2 container if requested, then one btrfs
 - Subvolume `@` receives the stream; `@home` is created empty
 
 Then: new btrfs UUID (mkfs already allocates one; `btrfs receive` keeps the target filesystem UUID, unlike `dd` of a partition image), resize to the partition, `systemd-machine-id-setup`, write `/etc/hostname`, `/etc/localtime`, create the user with `wheel`, install GRUB via `shim` so Secure Boot still chains to Fedora’s kernel, regenerate the initramfs if the received one does not match this machine’s firmware set. Offline install must work with no network.

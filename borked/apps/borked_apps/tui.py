@@ -229,6 +229,14 @@ def run_install(chosen: list[App]) -> int:
     failed = False
     print(say(START))
     print("System packages ask for sudo. Agents install into your home.")
+    needs_root = any(
+        app.kind in ("dnf", "dnf-repo", "virt", "github-rpm", "github-bundle", "distrobox")
+        for app in chosen
+    )
+    if needs_root and os.geteuid() != 0 and os.isatty(0):
+        import subprocess
+
+        subprocess.run(["sudo", "-v"], check=False)
     for app in chosen:
         print(f"\n-- {say(WORKING, label=app.label)}")
         try:

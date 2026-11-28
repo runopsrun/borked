@@ -132,7 +132,23 @@ if [[ "$status" -eq 0 ]]; then
     sync
     reboot -f || true
 else
-    echo "Installer stopped (${status})."
+    echo "Installer stopped (${status}). Full log: /run/borked/install.log"
+    if [[ -t 0 ]]; then
+        while true; do
+            printf 'Press [r] to reboot or [s] for a debug shell: '
+            read -r -n 1 reply || reply=""
+            echo
+            case "$reply" in
+                r|R)
+                    sync
+                    reboot -f || true
+                    ;;
+                s|S)
+                    bash -i || true
+                    ;;
+            esac
+        done
+    fi
 fi
 while true; do
     sleep 3600

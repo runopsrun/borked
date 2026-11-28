@@ -87,29 +87,18 @@ rpm --import "$ROOT/out/keys/RPM-GPG-KEY-borked"
 dnf -y --setopt=gpgcheck=1 --allowerasing install "${rpms[@]}"
 
 say "Adding repos. Fedora still wins a name fight. gpgcheck stays on."
-dnf -y --setopt=gpgcheck=1 install distribution-gpg-keys curl
+dnf -y --setopt=gpgcheck=1 install distribution-gpg-keys
 install -d -m 0755 /etc/yum.repos.d /etc/pki/rpm-gpg
 cp "$ROOT"/repos/*.repo /etc/yum.repos.d/
 if [[ -d "$ROOT/repos/keys" ]]; then
     cp "$ROOT"/repos/keys/* /etc/pki/rpm-gpg/
 fi
-tmp="$(mktemp)"
 for key in /etc/pki/rpm-gpg/* \
     "/usr/share/distribution-gpg-keys/rpmfusion/RPM-GPG-KEY-rpmfusion-nonfree-fedora-${RELEASE}"
 do
     [[ -f "$key" ]] || continue
     rpm --import "$key" || true
 done
-for url in \
-    https://brave-browser-rpm-release.s3.brave.com/brave-core.asc \
-    https://download.copr.fedorainfracloud.org/results/rossetnocpes/herdr/pubkey.gpg \
-    https://download.copr.fedorainfracloud.org/results/che/zed/pubkey.gpg \
-    https://download.copr.fedorainfracloud.org/results/nett00n/hyprland/pubkey.gpg
-do
-    curl -fsSL "$url" -o "$tmp"
-    rpm --import "$tmp" || true
-done
-rm -f "$tmp"
 
 say "Daily apps. Wine's scriptlet is a known liar, so Wine goes last, scripts off."
 dnf -y --setopt=gpgcheck=1 --exclude=wine-core --exclude=wine-filesystem install "${apps[@]}"
@@ -123,7 +112,19 @@ fi
 install -D -m 0644 "$ROOT/repos/flathub.flatpakrepo" /usr/share/borked/flathub.flatpakrepo
 install -D -m 0644 "$ROOT/repos/cosmic.flatpakrepo" /usr/share/borked/cosmic.flatpakrepo
 flatpak remote-add --if-not-exists --system flathub /usr/share/borked/flathub.flatpakrepo
+flatpak remote-modify --system --no-filter --url=https://dl.flathub.org/repo/ --enable flathub
 flatpak remote-add --if-not-exists --system cosmic /usr/share/borked/cosmic.flatpakrepo
+awk '
+    /^\[remote "flathub"\]$/ { remote = "flathub"; next }
+    /^\[remote "cosmic"\]$/ { remote = "cosmic"; next }
+    /^\[/ { remote = "" }
+    remote == "flathub" && $0 == "url=https://dl.flathub.org/repo/" { flathub_url = 1 }
+    remote == "flathub" && $0 == "gpg-verify=true" { flathub_gpg = 1 }
+    remote == "flathub" && /^filter=/ { flathub_filtered = 1 }
+    remote == "cosmic" && $0 == "url=https://apt.pop-os.org/cosmic/" { cosmic_url = 1 }
+    remote == "cosmic" && $0 == "gpg-verify=true" { cosmic_gpg = 1 }
+    END { exit (flathub_url && flathub_gpg && !flathub_filtered && cosmic_url && cosmic_gpg) ? 0 : 1 }
+' /var/lib/flatpak/repo/config || die "Flatpak remotes did not land as full Flathub plus COSMIC."
 
 wallpaper="$(cat <<'EOF'
 (
@@ -155,7 +156,7 @@ if [[ -n "$user" && "$user" != root ]]; then
         if [[ -f "$panel" ]]; then
             printf '%s\n' '["Dock"]' >"$panel"
         fi
-        chown -R "$user:$user" "$home/.config/cosmic"
+        chown -R "$user:" "$home/.config/cosmic"
     fi
 fi
 

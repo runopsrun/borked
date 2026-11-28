@@ -1,9 +1,9 @@
 Name:           borked-defaults
 Version:        1
-Release:        6%{?dist}
+Release:        7%{?dist}
 Summary:        Borked wallpaper, theme seed, and Quickshell bar
 License:        MIT
-URL:            https://borked.invalid
+URL:            https://projectborked.com
 BuildArch:      noarch
 
 Source0:        wallpaper.png
@@ -51,6 +51,8 @@ if [ -f "$entries" ]; then
 fi
 
 %changelog
+* Sat Nov 28 2026 Borked <dev@borked.invalid> - 1-7
+- Share the nmcli link probe across screens and terminate only the current session on logout.
 * Thu Nov 26 2026 Borked OS <dev@borked.invalid> - 1-6
 - Ship Hyprland session defaults the installer can copy.
 * Sun Nov 15 2026 Borked OS <dev@borked.invalid> - 1-5

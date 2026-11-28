@@ -6,29 +6,53 @@ source /src/image/lib.sh
 
 variant="${BORKED_VARIANT:-Development}"
 keydir=/src/out/keys
-gnupg="$keydir/gnupg"
 top=/src/out/rpmbuild
+release_gnupg=""
+
+cleanup() {
+    if [[ -n "$release_gnupg" ]]; then
+        gpgconf --homedir "$release_gnupg" --kill gpg-agent >/dev/null 2>&1 || true
+        rm -rf "$release_gnupg"
+    fi
+}
+trap cleanup EXIT
 
 dnf_build -y install rpm-build rpm-sign createrepo_c gnupg2 python3 librsvg2-tools fontconfig
 
 python3 /src/branding/gen_wallpaper.py
 
-install -d -m 0700 "$gnupg"
-export GNUPGHOME="$gnupg"
+install -d -m 0755 "$keydir"
+gpg_pass="${BORKED_RELEASE_PASSPHRASE:-}"
 if [[ -n "${BORKED_RELEASE_KEY:-}" ]]; then
-    gpg --batch --import "$BORKED_RELEASE_KEY"
-    gpg --batch --export --armor "$(gpg --batch --with-colons --list-secret-keys | awk -F: '/^uid:/ {print substr($10,1); exit}')" \
-        >"$keydir/RPM-GPG-KEY-borked" || true
-    if [[ ! -s "$keydir/RPM-GPG-KEY-borked" ]]; then
-        gpg --batch --export --armor >"$keydir/RPM-GPG-KEY-borked"
+    release_gnupg="$(mktemp -d)"
+    gnupg="$release_gnupg"
+    chmod 700 "$gnupg"
+    export GNUPGHOME="$gnupg"
+    gpg --batch --pinentry-mode loopback --passphrase "$gpg_pass" --import "$BORKED_RELEASE_KEY"
+    gpg_name="$(gpg --batch --with-colons --list-secret-keys | awk -F: '/^fpr:/ {print $10; exit}')"
+    if [[ -z "$gpg_name" ]]; then
+        echo "no secret key found in BORKED_RELEASE_KEY" >&2
+        exit 1
     fi
-elif [[ ! -s "$keydir/RPM-GPG-KEY-borked" ]]; then
-    gpg --batch --pinentry-mode loopback --passphrase '' \
-        --quick-gen-key "Borked OS Dev <dev@borked.invalid>" default default never
-    gpg --batch --export --armor "Borked OS Dev <dev@borked.invalid>" >"$keydir/RPM-GPG-KEY-borked"
+    gpg --batch --export --armor "$gpg_name" >"$keydir/RPM-GPG-KEY-borked"
+else
+    gnupg="$keydir/gnupg"
+    install -d -m 0700 "$gnupg"
+    export GNUPGHOME="$gnupg"
+    gpg_name="Borked OS Dev <dev@borked.invalid>"
+    if [[ ! -s "$keydir/RPM-GPG-KEY-borked" ]] || ! gpg --batch --list-secret-keys "$gpg_name" >/dev/null 2>&1; then
+        gpg --batch --pinentry-mode loopback --passphrase '' \
+            --quick-gen-key "$gpg_name" default default never
+        gpg --batch --export --armor "$gpg_name" >"$keydir/RPM-GPG-KEY-borked"
+    fi
 fi
 printf 'allow-loopback-pinentry\n' >"$gnupg/gpg-agent.conf"
 printf 'pinentry-mode loopback\n' >"$gnupg/gpg.conf"
+passfile="$gnupg/passphrase"
+(
+    umask 077
+    printf '%s' "$gpg_pass" >"$passfile"
+)
 chmod 700 "$gnupg"
 gpgconf --kill gpg-agent >/dev/null 2>&1 || true
 
@@ -61,10 +85,10 @@ defines=(
     --define "fedora_release ${RELEASE}"
     --define "borked_variant ${variant}"
     --define "identity_evr ${identity_evr}"
-    --define "_gpg_name Borked OS Dev <dev@borked.invalid>"
+    --define "_gpg_name ${gpg_name}"
     --define "_gpg_path ${gnupg}"
     --define "__gpg /usr/bin/gpg"
-    --define "_gpg_sign_cmd_extra_args --batch --pinentry-mode loopback --passphrase ''"
+    --define "_gpg_sign_cmd_extra_args --batch --pinentry-mode loopback --passphrase-file ${passfile}"
 )
 
 for spec in borked-release borked-repos borked-defaults borked-apps; do

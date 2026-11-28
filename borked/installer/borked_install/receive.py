@@ -11,8 +11,13 @@ from borked_install.util import Cleanup, blkid, mount, run, umount
 MNT = "/run/borked/mnt"
 
 
+def _stream_magic(path: str) -> bytes:
+    with open(path, "rb") as handle:
+        return handle.read(4)
+
+
 def _stream(path: str) -> subprocess.Popen:
-    magic = Path(path).read_bytes()[:4]
+    magic = _stream_magic(path)
     if magic == b"\x28\xb5\x2f\xfd":
         cmd = ["zstd", "-dc", "--stdout", path]
     else:

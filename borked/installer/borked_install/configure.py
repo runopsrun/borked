@@ -74,8 +74,11 @@ def configure(root: str, cfg: Config, layout: Layout, fs_uuid: str) -> None:
     zone = Path(root) / "usr/share/zoneinfo" / cfg.timezone
     if not zone.exists():
         raise SystemExit(f"timezone not in the image: {cfg.timezone}")
-    os.symlink(f"/usr/share/zoneinfo/{cfg.timezone}", os.path.join(root, "etc/localtime.tmp"))
-    os.replace(os.path.join(root, "etc/localtime.tmp"), os.path.join(root, "etc/localtime"))
+    localtime_tmp = os.path.join(root, "etc/localtime.tmp")
+    if os.path.lexists(localtime_tmp):
+        os.unlink(localtime_tmp)
+    os.symlink(f"/usr/share/zoneinfo/{cfg.timezone}", localtime_tmp)
+    os.replace(localtime_tmp, os.path.join(root, "etc/localtime"))
 
     _write(os.path.join(root, "etc/hostname"), cfg.hostname + "\n")
     _write(
@@ -97,8 +100,10 @@ def configure(root: str, cfg: Config, layout: Layout, fs_uuid: str) -> None:
     fstab = [
         f"UUID={fs_uuid} / btrfs subvol=@,compress=zstd:3 0 0",
         f"UUID={fs_uuid} /home btrfs subvol=@home,compress=zstd:3 0 0",
-        f"UUID={layout.esp_uuid} /boot/efi vfat umask=0077,shortname=winnt 0 2",
     ]
+    if layout.boot_uuid:
+        fstab.append(f"UUID={layout.boot_uuid} /boot ext4 defaults 1 2")
+    fstab.append(f"UUID={layout.esp_uuid} /boot/efi vfat umask=0077,shortname=winnt 0 2")
     if layout.luks_uuid:
         _write(
             os.path.join(root, "etc/crypttab"),
@@ -141,8 +146,6 @@ def configure(root: str, cfg: Config, layout: Layout, fs_uuid: str) -> None:
     config_dir = os.path.join(root, "home", cfg.username, ".config")
     os.makedirs(config_dir, exist_ok=True)
     Path(os.path.join(config_dir, "cosmic-initial-setup-done")).write_text("")
-    locale = cfg.locale if _token(cfg.locale) else "en_US.UTF-8"
-    xkb = cfg.xkb_layout if _token(cfg.xkb_layout) else "us"
     comp = os.path.join(config_dir, "cosmic/com.system76.CosmicComp/v1")
     settings = os.path.join(config_dir, "cosmic/com.system76.CosmicSettings/v1")
     os.makedirs(comp, exist_ok=True)
@@ -161,7 +164,10 @@ def configure(root: str, cfg: Config, layout: Layout, fs_uuid: str) -> None:
         for name in ("hyprland.conf", "hyprpaper.conf"):
             src = Path(root) / "usr/share/borked/hypr" / name
             if src.is_file():
-                Path(hypr, name).write_text(src.read_text())
+                text = src.read_text()
+                if name == "hyprland.conf":
+                    text = text.replace("kb_layout = us", f"kb_layout = {xkb}", 1)
+                Path(hypr, name).write_text(text)
     run(
         [
             "chroot",
